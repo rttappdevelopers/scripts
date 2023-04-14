@@ -1,0 +1,84 @@
+# About
+These are commands that one may find useful on Windows workstations and servers. The commands are a mix of DOS/CMD and PowerShell. The easiest way to tell them apart is that DOS commands will be in all capital letters, PowerShell will be mixed-case.
+
+Many of these commands require an elevated command prompt or PowerShell terminal; run as Administrator. If you are working from the DOS command prompt, you can run simple Powershell commands that don't include quotations using the exmaple below:
+`powershell -c "Get-Volume C"`
+
+Any text after a # in an example is a remark or comment, which explains what the command does.
+
+# Filesystem Operations
+##	Directories
+
+```bat
+CD \                    # Go to root directory of current drive
+CD ..                   # Go back one directory
+CD ..\..                # Layered to go back two directories
+CD C:\Temp\             # Change directory to the Temp folder on the C: drive
+CD "C:\Program Files\"  # Changing to a directory with spaces in the name requires quotes
+```
+
+## Common locations and their aliases
+To use these: %AppData% is the current user's full path to their appdata folder; 
+*e.g.: CD %AppData% = CD C:\Users\bradb\AppData\Roaming*
+
+- %AllUsersProfile% - Open the All User's Profile C:\ProgramData
+- %AppData% - Opens AppData folder C:\Users\{username}\AppData\Roaming
+- %CommonProgramFiles% - C:\Program Files\Common Files
+- %CommonProgramFiles(x86)% - C:\Program Files (x86)\Common Files
+- %HomeDrive% - Opens your home drive C:\
+- %LocalAppData% - Opens local AppData folder C:\Users\{username}\AppData\Local
+- %ProgramData% - C:\ProgramData
+- %ProgramFiles% - C:\Program Files or C:\Program Files (x86)
+- %ProgramFiles(x86)% - C:\Program Files (x86)
+- %Public% - C:\Users\Public
+- %SystemDrive% - C:
+- %SystemRoot% - Opens Windows folder C:\Windows
+- %Temp% - Opens temporary file Folder C:\Users\{Username}\AppData\Local\Temp
+- %UserProfile% - Opens your user's profile C:\Users\{username}
+- %AppData%\Microsoft\Windows\Start Menu\Programs\Startup - Opens Windows 10 Startup location for program shortcuts
+- ~ - In PowerShell, the tilde can be used as the user's home director, just like in Linux: CD ~
+
+##	Devices and drives
+```bat
+C:  # Enter drive letter and colon to change drive
+FORMAT D:
+FDISK
+DISKPART
+```
+
+##	File Operation
+
+# System Functions
+##	Run a command
+##	Operations
+##	Process list
+##	Kill
+##	Aliases
+	
+# Network
+##	LAN IP
+##	WAN IP
+##	Domain Name Lookup and DNS Records
+##	Who owns an IP or domain
+##	Where is an IP from
+##	Who is on the network, are they reachable?
+##	Remote Command Line
+	
+# User functions
+##	Who am I
+```bat
+WHOAMI  # Get current sername, presented as authentication source and username
+        # COMPTUERNAME\USER, or DOMAIN\USER
+```
+
+##	Who is signed in
+##	Change password
+```bat
+NET USER [username] [password]
+```
+
+##	List users and groups
+##	Group Policy
+
+# References
+- https://superuser.com/questions/217504/is-there-a-list-of-windows-special-directories-shortcuts-like-temp
