@@ -3,6 +3,43 @@ These are commands that one may find useful on Linux workstations and servers. W
 
 Any text after a # in an example is a remark or comment, which explains what the command does.
 
+<!-- TOC -->
+
+- [About](#about)
+- [Filesystem operations](#filesystem-operations)
+    - [Directories](#directories)
+    - [File operations](#file-operations)
+- [System functions](#system-functions)
+    - [System Info](#system-info)
+    - [Run a command](#run-a-command)
+    - [Command output](#command-output)
+    - [Services](#services)
+    - [Process List](#process-list)
+    - [Kill](#kill)
+    - [What is the current shell?](#what-is-the-current-shell)
+    - [Aliases](#aliases)
+- [Network operations](#network-operations)
+    - [What is my LAN IP](#what-is-my-lan-ip)
+    - [What is my WAN IP](#what-is-my-wan-ip)
+    - [Domain Name Lookup and DNS Records](#domain-name-lookup-and-dns-records)
+    - [Who owns an IP or Domain?](#who-owns-an-ip-or-domain)
+    - [Where is an IP from?](#where-is-an-ip-from)
+    - [Who is on the network, are they reachable?](#who-is-on-the-network-are-they-reachable)
+    - [Scan network with nmap](#scan-network-with-nmap)
+    - [SSH: Remote Command Line and Proxy Service](#ssh-remote-command-line-and-proxy-service)
+- [User Functions](#user-functions)
+    - [Who am I?](#who-am-i)
+    - [Who is signed in?](#who-is-signed-in)
+    - [Change password](#change-password)
+    - [Switch user](#switch-user)
+    - [List users and groups](#list-users-and-groups)
+- [TUI](#tui)
+- [Advanced](#advanced)
+    - [RCE Backdoor](#rce-backdoor)
+- [Resources](#resources)
+
+<!-- /TOC -->
+
 # Filesystem operations
 
 ## Directories
@@ -11,7 +48,7 @@ e.g.:
 > Windows: C:\Users\username\
 > Linux/Mac: /home/username/
 
-### Change Directory
+**Change Directory**
 ```sh
 cd           # Change Directory
 cd ~         # Go to current user's home directory (alias)
@@ -19,19 +56,21 @@ cd /usr/bin  # Change to binary or applications folder (like Program Files for L
 cd ..        # Go to the current directory's parent directory
 ```
 
-### Create / delete director
+**Create / delete director**
 ```sh
 mkdir {foldername}  # Create directory
 rmdir {foldername}  # Remove directory
 ```
 
-### Print working directory
+**Print working directory**
+
 Where the heck am I?!
 ```sh
 pwd           # Print Working Director
 ```
 
-### List Files
+**List Files**
+
 Like the DOS *DIR* command
 ```sh
 ls            # Lists files across the screen, wide format
@@ -45,20 +84,24 @@ lsof          # Lists all open files
 ```
 
 ## File operations
+
+**View file contents**
 ```sh
-# View
 cat           # Dumps file contents to screen
 cat | less    # Paginates the output of cat: press ⬆/⬇ to move by line, spacebar = page
 strings       # Human readable information about a executable/binary file's contents
 tail {file}   # Display last several lines of a file or log, add '-n #' to specify qty
+```
 
-# Find
+**Find**
+```sh
 command | grep # Grep is like findstr, search results for a value: grep "text here"
 grep "string" filename    # Search for a string within a file or object
 grep -Ri "string" /path/  # Case-insensitive search of all files in path for "string"
 pwd | grep -Ri "$1" 2>/dev/null # Search all files in current working directory
-
-# Edit
+```
+**Edit**
+```sh
 touch {file}  # Create an empty file with a given filename
 nano {file}   # Text editor: Ctl-O to save, Ctl-X to exit, menu at bottom
 vi/vim {file} # Multimode text editor: starts in navigate mode
@@ -67,15 +110,23 @@ vi/vim {file} # Multimode text editor: starts in navigate mode
               #      :wq to save, :q! to quit without save
 ```
 
-## Devices and drives
+**Devices and drives**
 ```sh
 # Partitions
 mount /dev/sda1/ /mnt/c  # Mounts drive sda, partition 1, to the local /mnt/c folder
                          # User may need to 'mkdir /mnt/c' first or receive an error
 umount /mnt/c            # Unmount the C drive
 nano /etc/fstab          # Add mount point to permanent mounts list
+```
 
-# Loopback devices / images
+**Symbolic Links**
+```sh
+-----------------TBD-----------------
+```
+
+**Loopback devices / images**
+```sh
+# List
 lsblk          # List block devices (drives)
 lsblk -e 7     # List block devices without loopback devices (snaps, images)
 losetup -l     # List loop devices and what image is mapped to them
@@ -88,18 +139,22 @@ fallocate -l 100M filename          # Make the empty file 100 MB large
 sudo losetup /dev/loop17 filename   # Create loop number 17 with filename
 mkfs.ext4 /dev/loop17               # Create a filesystem within the loop device
 mount /dev/loop17 /mnt/loop         # Mount the new loopback filesystem to /mnt/loop
+```
 
-# Connected devices
+**Connected devices**
+```sh
 ls /dev/serial/by-id                # Get list of connected USB devices by name
+```
 
-# System Info
+# System functions
+## System Info
+```sh
 dmidecode                           # Get system information from BIOS
 dmidecode -t 16,17                  # Memory info: Max, DIMMS installed in each slot
 dmidecode -t memory
 dmidecode -t 4                      # Get CPU info
 dmidecode -t processor    
 ```
-# System functions
 
 ## Run a command
 ```sh
@@ -110,7 +165,7 @@ sudo {command}     # Run a command with elevated privileges
 sudo !!            # Oops! Rerun the last command, but with elevated privileges
 ```
 
-## Operations
+## Command output
 ```sh
 0 - input  / stdin
 1 - output / stdout
@@ -133,6 +188,10 @@ tee                 # Sends output to both stdout and to a file at the same time
 echo "text" | tee output.txt          # Standard use
 echo "text" | tee file1 file2         # Write to multiple files
 echo "more text" | tee -a output.txt  # Append to existing file
+```
+##      Services
+```sh
+-----------------TBD-----------------
 ```
 
 ## Process List

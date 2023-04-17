@@ -51,8 +51,24 @@ DISKPART
 # System Functions
 ##	Run a command
 ##	Operations
+##      Services
+```powershell
+Get-Service {service}                        # Get service status, by name with quotes or alias
+Get-Service {service} | Restart-Service      # Restart the service
+```
+
 ##	Process list
+```powershell
+get-process                                   # List all processes
+get-process -Name "Notepad"                   # Get processes named Notepad
+get-process -Name "*notepad*"                 # Get process info for applications with Notepad in their name
+```
 ##	Kill
+```powershell
+Stop-Process 26152                            # Kill the process with ID #26152, identified above with get-process
+Stop-Process -Name "Notepad"                  # Kill the processes named Notepad
+get-process -Name "*notepad*" | Stop-Process  # Get and kill the processes with Notepad in their name
+```
 ##	Aliases
 	
 # Network
