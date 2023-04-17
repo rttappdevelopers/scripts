@@ -6,6 +6,39 @@ Many of these commands require an elevated command prompt or PowerShell terminal
 
 Any text after a # in an example is a remark or comment, which explains what the command does.
 
+<!-- TOC -->
+
+- [About](#about)
+- [Filesystem Operations](#filesystem-operations)
+    - [Directories](#directories)
+    - [Common locations and their aliases](#common-locations-and-their-aliases)
+    - [Devices and drives](#devices-and-drives)
+    - [File Operation](#file-operation)
+- [System Functions](#system-functions)
+    - [Run a command](#run-a-command)
+    - [Operations](#operations)
+    - [Services](#services)
+    - [Process list](#process-list)
+    - [Kill](#kill)
+    - [Aliases](#aliases)
+- [Network](#network)
+    - [LAN IP](#lan-ip)
+    - [WAN IP](#wan-ip)
+    - [Domain Name Lookup and DNS Records](#domain-name-lookup-and-dns-records)
+    - [Who owns an IP or domain](#who-owns-an-ip-or-domain)
+    - [Where is an IP from](#where-is-an-ip-from)
+    - [Who is on the network, are they reachable?](#who-is-on-the-network-are-they-reachable)
+    - [Remote Command Line](#remote-command-line)
+- [User functions](#user-functions)
+    - [Who am I](#who-am-i)
+    - [Who is signed in](#who-is-signed-in)
+    - [Change password](#change-password)
+    - [List users and groups](#list-users-and-groups)
+    - [Group Policy](#group-policy)
+- [References](#references)
+
+<!-- /TOC -->
+
 # Filesystem Operations
 ##	Directories
 
