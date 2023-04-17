@@ -1,7 +1,7 @@
 # About
-These are commands that one may find useful on Windows workstations and servers. The commands are a mix of DOS/CMD and PowerShell. The easiest way to tell them apart is that DOS commands will be in all capital letters, PowerShell will be mixed-case.
+These are commands that one may find useful on Windows workstations and servers. The commands are a mix of DOS/CMD and PowerShell. The easiest way to tell them apart is that DOS commands will be in all capital letters, PowerShell will be mixed-case. 
 
-Many of these commands require an elevated command prompt or PowerShell terminal; run as Administrator. If you are working from the DOS command prompt, you can run simple Powershell commands that don't include quotations using the exmaple below:
+Many of these commands require an elevated command prompt or PowerShell terminal; run as Administrator. Note that any DOS command can be run in PowerShell, but PowerShell can't be run in the DOS command prompt without calling the PowerShell interpreter. If you are working from the DOS command prompt, you can run simple Powershell commands that don't include quotations using the exmaple below:
 `powershell -c "Get-Volume C"`
 
 Any text after a # in an example is a remark or comment, which explains what the command does.
