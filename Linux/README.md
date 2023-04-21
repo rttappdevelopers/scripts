@@ -79,8 +79,9 @@ ls -l         # Shows files in a list format
 ls -al        # Shows all files in list format
 lsof          # Lists all open files
               # Run with '-p PID' of running exe to get associated files
-              # Run with '-u {username}' to list files open by user+
+              # Run with -P' to list port numbers, combine with -i
               # Run as 'lsof -i' to get processes with open inet sockets
+              # Run with '-u {username}' to list files open by user+
 ```
 
 ## File operations
@@ -202,6 +203,7 @@ ps aux | grep Chrome  # Grep / filter for specific processes
 ps -u  {username}     # Shows processes owned by a user
 top                   # Command Line Task Manager, shows resource utilization
 htop                  # More human-readable version, may not be installed
+ls /proc/{pid}        # Process information and printable strings in memory
 ```
 
 ## Kill
