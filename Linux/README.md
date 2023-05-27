@@ -149,6 +149,19 @@ ls /dev/serial/by-id                # Get list of connected USB devices by name
 ```
 
 # System functions
+
+## Operating System Info
+```sh
+# Find distribution name and version
+cat /etc/*-release
+lsb_release -a
+hostnamectl
+
+# Get Linux kernel version
+uname -a
+cat /proc/version
+```
+
 ## System Info
 ```sh
 dmidecode                           # Get system information from BIOS
