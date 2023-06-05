@@ -10,6 +10,7 @@ Any text after a # in an example is a remark or comment, which explains what the
     - [Directories](#directories)
     - [File operations](#file-operations)
 - [System functions](#system-functions)
+    - [Operating System Info](#operating-system-info)
     - [System Info](#system-info)
     - [Run a command](#run-a-command)
     - [Command output](#command-output)
@@ -160,6 +161,7 @@ hostnamectl
 # Get Linux kernel version
 uname -a
 cat /proc/version
+getconf LONG_BIT   # 32 or 64-bit?
 ```
 
 ## System Info
