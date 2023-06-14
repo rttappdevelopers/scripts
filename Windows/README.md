@@ -84,6 +84,11 @@ DISKPART
 # System Functions
 ##	Run a command
 ##	Operations
+```powershell
+# Get system uptime
+Get-CimInstance -ClassName win32_operatingsystem | select csname, lastbootuptime
+```
+
 ##      Services
 ```powershell
 Get-Service {service}                        # Get service status, by name with quotes or alias
