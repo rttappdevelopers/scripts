@@ -153,6 +153,9 @@ ls /dev/serial/by-id                # Get list of connected USB devices by name
 
 ## Operating System Info
 ```sh
+# Get systemuptime
+uptime
+
 # Find distribution name and version
 cat /etc/*-release
 lsb_release -a
