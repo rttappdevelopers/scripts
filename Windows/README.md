@@ -85,8 +85,8 @@ DISKPART
 ##	Run a command
 ##	Operations
 ```powershell
-# Get system uptime
-Get-CimInstance -ClassName win32_operatingsystem | select csname, lastbootuptime
+Get-CimInstance -ClassName win32_operatingsystem | select csname, lastbootuptime  # Get system uptime
+shutdown -r -t 0  # Reboot now (wait time is zero seconds)
 ```
 
 ##      Services
