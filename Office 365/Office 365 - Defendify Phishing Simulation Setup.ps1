@@ -2,8 +2,6 @@
 ## Reference: https://app.defendify.com/module/phishing-simulations/whitelisting
 ## Reference: https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps
 ## Reference: https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/skip-filtering-phishing-simulations-sec-ops-mailboxes?view=o365-worldwide
-
-Try {Set-ExecutionPolicy RemoteSigned} catch {Write-Output "Run PowerShell as administrator"; exit}
 $ErrorActionPreference = "Stop"
 
 # Settings
