@@ -58,7 +58,7 @@ cd /usr/bin  # Change to binary or applications folder (like Program Files for L
 cd ..        # Go to the current directory's parent directory
 ```
 
-**Create / delete director**
+**Create / delete directory**
 ```sh
 mkdir {foldername}  # Create directory
 rmdir {foldername}  # Remove directory
@@ -113,15 +113,6 @@ vi/vim {file} # Multimode text editor: starts in navigate mode
               #      :wq to save, :q! to quit without save
 ```
 
-**Devices and drives**
-```sh
-# Partitions
-mount /dev/sda1/ /mnt/c  # Mounts drive sda, partition 1, to the local /mnt/c folder
-                         # User may need to 'mkdir /mnt/c' first or receive an error
-umount /mnt/c            # Unmount the C drive
-nano /etc/fstab          # Add mount point to permanent mounts list
-```
-
 **Symbolic Links**
 ```sh
 -----------------TBD-----------------
@@ -144,9 +135,13 @@ mkfs.ext4 /dev/loop17               # Create a filesystem within the loop device
 mount /dev/loop17 /mnt/loop         # Mount the new loopback filesystem to /mnt/loop
 ```
 
-**Connected devices**
+**Disks and drives**
 ```sh
-ls /dev/serial/by-id                # Get list of connected USB devices by name
+# Partitions
+mount /dev/sda1/ /mnt/c  # Mounts drive sda, partition 1, to the local /mnt/c folder
+                         # User may need to 'mkdir /mnt/c' first or receive an error
+umount /mnt/c            # Unmount the C drive
+nano /etc/fstab          # Add mount point to permanent mounts list
 ```
 
 # System functions
@@ -244,6 +239,11 @@ Most shells allow aliases, or shortcuts for longer commands or strings of comman
 ```sh
 alias                        # Lists all defined aliases
 alias ls='exa --color=auto'  # ls command remapped to exa w/ color
+```
+
+## Connected devices**
+```sh
+ls /dev/serial/by-id                # Get list of connected USB devices by name
 ```
 
 # Network operations
