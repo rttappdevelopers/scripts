@@ -12,8 +12,8 @@ Any text after a # in an example is a remark or comment, which explains what the
 - [Filesystem Operations](#filesystem-operations)
     - [Directories](#directories)
     - [Common locations and their aliases](#common-locations-and-their-aliases)
-    - [Devices and drives](#devices-and-drives)
-    - [File Operation](#file-operation)
+    - [File operations](#file-operations)
+    - [Disks and drives](#disks-and-drives)
 - [System Functions](#system-functions)
     - [Run a command](#run-a-command)
     - [Operations](#operations)
@@ -21,6 +21,7 @@ Any text after a # in an example is a remark or comment, which explains what the
     - [Process list](#process-list)
     - [Kill](#kill)
     - [Aliases](#aliases)
+    - [Connected devices**](#connected-devices)
 - [Network](#network)
     - [LAN IP](#lan-ip)
     - [WAN IP](#wan-ip)
@@ -41,7 +42,7 @@ Any text after a # in an example is a remark or comment, which explains what the
 
 # Filesystem Operations
 ##	Directories
-
+**Change Directory**
 ```bat
 CD \                    # Go to root directory of current drive
 CD ..                   # Go back one directory
@@ -49,6 +50,9 @@ CD ..\..                # Layered to go back two directories
 CD C:\Temp\             # Change directory to the Temp folder on the C: drive
 CD "C:\Program Files\"  # Changing to a directory with spaces in the name requires quotes
 ```
+**Print working directory**
+
+**List Files**
 
 ## Common locations and their aliases
 To use these: %AppData% is the current user's full path to their appdata folder; 
@@ -71,15 +75,44 @@ To use these: %AppData% is the current user's full path to their appdata folder;
 - %AppData%\Microsoft\Windows\Start Menu\Programs\Startup - Opens Windows 10 Startup location for program shortcuts
 - ~ - In PowerShell, the tilde can be used as the user's home director, just like in Linux: CD ~
 
-##	Devices and drives
-```bat
-C:  # Enter drive letter and colon to change drive
-FORMAT D:
+## File operations
+**View file contents**
+
+**Find**
+
+**Edit**
+
+**Devices and drives**
+
+**Symbolic Links**
+Junctions and Hard Links
+
+##	Disks and drives
+**Disks and partitions**
+```cmd
+C:         # Enter drive letter and colon to change drive
+FORMAT D:  # Format disk
 FDISK
 DISKPART
 ```
 
-##	File Operation
+**Filesystem and OS image repair**
+```cmd
+DISM.exe /Online /Cleanup-image /Restorehealth  # Deployment Image Service and Management Tool
+sfc /scannow        # Scans and repairs corrupted system files
+echo y | chkdsk /r  # Perform offline checkdisk at next boot, assume yes
+```
+
+**Get checkdisk results**
+```powershell
+get-winevent -FilterHashTable @{logname="Application"; id="1001"}| ?{$_.providername –match "wininit"} | Select-Object -first 1 | fl timecreated, message
+```
+
+**Disk SMART Status**
+```powershell
+wmic diskdrive get status  # Get SMART status for each drive
+wmic /namespace:\\root\wmi path MSStorageDriver_FailurePredictStatus  # Check for predicted failure of disk
+```
 
 # System Functions
 ##	Run a command
@@ -89,7 +122,7 @@ Get-CimInstance -ClassName win32_operatingsystem | select csname, lastbootuptime
 shutdown -r -t 0  # Reboot now (wait time is zero seconds)
 ```
 
-##      Services
+## Services
 ```powershell
 Get-Service {service}                        # Get service status, by name with quotes or alias
 Get-Service {service} | Restart-Service      # Restart the service
@@ -109,6 +142,8 @@ get-process -Name "*notepad*" | Stop-Process  # Get and kill the processes with 
 ```
 ##	Aliases
 	
+## Connected devices**
+
 # Network
 ##	LAN IP
 ##	WAN IP
