@@ -22,8 +22,13 @@ Get-ChildItem C:\users | ForEach-Object {
         $dateout = $Matches[0]
         
         if ([DateTime]$dateout -lt [DateTime]$CutoffDate) { 
-            Write-Output "$user `t $dateout `t $cutoffdate, deleting" 
-            if ($assessonly -ne "true") {Get-CimInstance -Class Win32_UserProfile | Where-Object {$_.LocalPath -like "*$user*"} | Remove-CimInstance}
+            if ($assessonly -ne "true") {
+                Write-Output "$user `t $dateout `t $cutoffdate, deleting" 
+                Get-CimInstance -Class Win32_UserProfile | Where-Object {$_.LocalPath -like "*$user*"} | Remove-CimInstance
+            }
+            else {
+                Write-Output "$user `t $dateout `t $cutoffdate, suggest deleting"
+            }
         }
         else
         {
@@ -31,7 +36,12 @@ Get-ChildItem C:\users | ForEach-Object {
         }
     }
     else {
-        Write-Output "$user not on file, deleting."
-        if ($assessonly -ne "true") {Get-CimInstance -Class Win32_UserProfile | Where-Object {$_.LocalPath -like "*$user*"} | Remove-CimInstance}
+        if ($assessonly -ne "true") {
+            Write-Output "$user not on file, deleting."
+            Get-CimInstance -Class Win32_UserProfile | Where-Object {$_.LocalPath -like "*$user*"} | Remove-CimInstance
+        }
+        else {
+            Write-Output "$user not on file, suggest deleting."           
+        }
     }
 }
