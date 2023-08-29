@@ -10,7 +10,7 @@ $zix_geolocation = "US"      # What country code do users generally reside in?
 
 # Where do you want the resulting file?
 $exportpath = "C:\temp\"
-$filename = "AppRiver-UserImpot_Template.csv"
+$filename = "AppRiver-UserImport_Template.csv"
 
 If (-not (Test-Path $exportpath)) { New-Item -Path $exportpath -Type Directory }
 $exportpath = $exportpath + $filename
