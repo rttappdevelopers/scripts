@@ -15,6 +15,7 @@ Any text after a # in an example is a remark or comment, which explains what the
     - [File operations](#file-operations)
     - [Disks and drives](#disks-and-drives)
 - [System Functions](#system-functions)
+    - [Operating System Info](#operating-system-info)
     - [Run a command](#run-a-command)
     - [Operations](#operations)
     - [Services](#services)
@@ -120,6 +121,11 @@ wmic /namespace:\\root\wmi path MSStorageDriver_FailurePredictStatus  # Check fo
 ```
 
 # System Functions
+## Operating System Info
+```powershell
+get-timezone | Select-Object DisplayName  # Get Time Zone
+```
+
 ##	Run a command
 ##	Operations
 ```powershell
