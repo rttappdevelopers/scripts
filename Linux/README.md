@@ -19,6 +19,7 @@ Any text after a # in an example is a remark or comment, which explains what the
     - [Kill](#kill)
     - [What is the current shell?](#what-is-the-current-shell)
     - [Aliases](#aliases)
+    - [Connected devices**](#connected-devices)
 - [Network operations](#network-operations)
     - [What is my LAN IP](#what-is-my-lan-ip)
     - [What is my WAN IP](#what-is-my-wan-ip)
@@ -298,6 +299,7 @@ nmap -p {ports,comma-delimeted} {ipaddr} | grep open
 ```
 
 ## SSH: Remote Command Line and Proxy Service
+**Accessing a server**  
 ```sh
 ssh {address}                                # Connect to remote server's command line
 ssh {user}@{address}                         # Include username, will only ask password
@@ -307,6 +309,14 @@ ssh {user}@{address} '{string of commands}'  # Run several commands or piped com
 ssh -L local_port:remote_address:remote_port username@server.com  # Proxy WAN > LAN
 e.g.: ssh -L 4433:192.168.1.1:443 user@ssh-server.com             # Remote LAN firewall
 ```
+
+**Managing keys (passwordless login)**  
+```sh
+ssh-keygen -t ed25519 # can leave passphrase blank
+cat ~/.ssh/id_ed25519.pub | ssh username@server.address.com 'cat >> ~/.ssh/authorized_keys'
+```
+
+**Troubleshooting**  
 Accidentally hitting `control` + `s` causes the session to *stop* or freeze.
 To disconnect a locked-up ssh session, type ` Enter ` ` ~ ` ` . ` one at a time.
 
