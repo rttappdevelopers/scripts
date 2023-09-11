@@ -20,9 +20,10 @@ Write-Output "Pulling logs from Datto Cloud Continuity"
 Compress-Archive -Path "C:\Windows\System32\config\systemprofile\AppData\Local\Datto\Datto Cloud Continuity\logs\" -DestinationPath "$tempPath\$fileName"
 
 # Pull system and application event logs
+# Back up Application event log to temp folder
 Write-Output "Pulling system and application event logs"
-(Get-WmiObject -Class Win32_NTEventlogFile | Where-Object LogfileName -EQ 'System').BackupEventlog('$tempPath\System.evtx')
-(Get-WmiObject -Class Win32_NTEventlogFile | Where-Object LogfileName -EQ 'Application').BackupEventlog('$tempPath\Application.evtx')
+Get-WinEvent -LogName Application -MaxEvents 10000 | Export-Clixml "$tempPath\Application.evtx"
+Get-WinEvent -LogName System -MaxEvents 10000 | Export-Clixml "$tempPath\System.evtx"
 
 # Add logs to zip file
 Compress-Archive -Path C:\temp\*.evtx -DestinationPath "$tempPath\$fileName" -Update
