@@ -28,3 +28,8 @@ Get-WinEvent -LogName System -MaxEvents 10000 | Export-Clixml "$tempPath\System.
 # Add logs to zip file
 Compress-Archive -Path C:\temp\*.evtx -DestinationPath "$tempPath\$fileName" -Update
 Write-Output "Zip file is ready at $tempPath\$fileName"
+
+# Clean up temp files
+Write-Output "Cleaning up temp files"
+Remove-Item "$tempPath\Application.evtx"
+Remove-Item "$tempPath\System.evtx"
