@@ -22,8 +22,8 @@ Compress-Archive -Path "C:\Windows\System32\config\systemprofile\AppData\Local\D
 # Pull system and application event logs
 # Back up Application event log to temp folder
 Write-Output "Pulling system and application event logs"
-Get-WinEvent -LogName Application -MaxEvents 10000 | Export-Clixml "$tempPath\Application.evtx"
-Get-WinEvent -LogName System -MaxEvents 10000 | Export-Clixml "$tempPath\System.evtx"
+wevtutil epl System $tempPath\System.evtx
+wevtutil epl Application $tempPath\Application.evtx
 
 # Add logs to zip file
 Compress-Archive -Path C:\temp\*.evtx -DestinationPath "$tempPath\$fileName" -Update
