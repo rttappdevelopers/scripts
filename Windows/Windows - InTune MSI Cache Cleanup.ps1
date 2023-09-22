@@ -18,4 +18,3 @@ $sizeRemaining = [math]::Round((Get-Volume -DriveLetter C).SizeRemaining / 1GB)
 
 # Write results of cleanup
 Write-Host "Deleted $msiCount .msi files totaling $msiSize bytes, freeing $sizeRemaining GB of disk space."
-```
