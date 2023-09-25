@@ -6,14 +6,17 @@ $ErrorActionPreference = "SilentlyContinue"
 Install-PackageProvider -Name NuGet -Force # pre-requisite tool
 
 $list = 
-    'Dell SupportAssist', 
+    'Dell BIOS Flash Utility',
+    'Dell Client Management',
+    'Dell Command | Update',
+    'Dell Digital Delivery',
+    'Dell Optimizer',
+    'Dell Platform Tags',
     'Dell SupportAssist OS Recovery Plugin for Dell Update', 
     'Dell SupportAssist Remediation',
-    'Dell Command | Update',
+    'Dell SupportAssist', 
     'Dell System Inventory Agent',
-    'Dell Platform Tags',
-    'Dell BIOS Flash Utility',
-    'Dell Digital Delivery'
+    'Dell WDT HSA'
 
 foreach ($item in $list) {
     # Phase 1: Uninstall string in Windows Registry
