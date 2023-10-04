@@ -10,9 +10,16 @@ $extexclude = $env:extexclude
 
 # Get current user
 $CurrentUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
+$CurrentUser = $CurrentUser -replace ".*\\"
+Write-Output $CurrentUser
+
+# Get last logged in user and strip the preceding
+$LastUser = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name "LastLoggedOnUser").LastLoggedOnUser
+$LastUser = $LastUser -replace ".*\\"
+Write-Output $LastUser
 
 # List exclusions
-$ExcludeValues=@("Public", "Administrator", "Guest", "MSSQL$MICROSOFT##WID", ".NET v4.5", $extexclude, $CurrentUser) # Add any other common admin accounts here
+$ExcludeValues=@("Public", "Administrator", "Guest", "MSSQL$MICROSOFT##WID", ".NET v4.5", $extexclude, $CurrentUser, $LastUser) # Add any other common admin accounts here
 
 $CutoffDate = (get-date).AddDays(-30).Date
 Write-Output "Username`t`tLast Logon`t`tCutoff Date`t`tAction"
