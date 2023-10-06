@@ -25,6 +25,10 @@ while (Get-Process -Name "msiexec" -ErrorAction SilentlyContinue) {
     Write-Output "msiexec.exe is running suggesting that the installation is in process, waiting 5 minutes"
     Start-Sleep -Seconds 300
 }
+Write-Output "Installation complete!"
 
 # Cleanup
+Write-Output "Removing $SOSFILE"
 Remove-Item -Path $SOSFILE -Force
+
+Write-Output "Work complete!"
