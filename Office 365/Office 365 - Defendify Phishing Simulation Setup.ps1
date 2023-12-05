@@ -1,3 +1,5 @@
+### DEPCRECATED, see https://office365itpros.com/2023/04/17/compliance-endpoint-powershell/ ###
+
 # Add Defendify Phishing Simulation allowances to a customer's Office 365 tenant
 ## Reference: https://app.defendify.com/module/phishing-simulations/whitelisting
 ## Reference: https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps
@@ -39,7 +41,7 @@ if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) { Install-M
 Import-Module ExchangeOnlineManagement 
 
 Write-Output "Connecting to Office 365 for Phishing Simulation settings, look for a pop-up window requesting credentials.`n"
-Connect-IPPSSession
+Connect-IPPSSession -UseRPSSession:$false
 
 ## Check for existing phishing override policy and create one if it one doesn't exist (there can be only one or there's an error)
 if ($null -eq (Get-PhishSimOverridePolicy | Select-Object Name)) { 
