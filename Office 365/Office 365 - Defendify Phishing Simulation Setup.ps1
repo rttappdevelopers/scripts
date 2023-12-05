@@ -1,4 +1,5 @@
 ### DEPCRECATED, see https://office365itpros.com/2023/04/17/compliance-endpoint-powershell/ ###
+### https://learn.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#updates-for-version-300-the-exo-v3-module ###
 
 # Add Defendify Phishing Simulation allowances to a customer's Office 365 tenant
 ## Reference: https://app.defendify.com/module/phishing-simulations/whitelisting
@@ -35,13 +36,23 @@ $PhishingIPs = @(
     "207.246.122.254"
 )
 
-# Connect to MS 365 Security & Compliance Center and set phishing override policy
-# Check for module ExchangeOnlineManagement and install if not present
-if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) { Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force }
-Import-Module ExchangeOnlineManagement 
+# Check for module ExchangeOnlineManagement and get current version if present, install if not present, upgrade if newer version than current is available
+if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) {
+    Write-Output "Installing Exchange Online Management PowerShell module.`n"
+    Install-Module -Name ExchangeOnlineManagement -Force
+} else {
+    $CurrentVersion = (Get-Module -Name ExchangeOnlineManagement).Version
+    $NewVersion = (Find-Module -Name ExchangeOnlineManagement).Version
+    if ($NewVersion -gt $CurrentVersion) {
+        Write-Output "Updating Exchange Online Management PowerShell module from $CurrentVersion to $NewVersion.`n"
+        Update-Module -Name ExchangeOnlineManagement -Force
+    }
+}
+Import-Module ExchangeOnlineManagement
 
-Write-Output "Connecting to Office 365 for Phishing Simulation settings, look for a pop-up window requesting credentials.`n"
-Connect-IPPSSession -UseRPSSession:$false
+# Connect to MS 365 Security & Compliance Center and set phishing override policy
+Write-Output "Connecting to Office 365 for anti-phishing overrides, look for a pop-up window requesting credentials.`n"
+Connect-IPPSSession
 
 ## Check for existing phishing override policy and create one if it one doesn't exist (there can be only one or there's an error)
 if ($null -eq (Get-PhishSimOverridePolicy | Select-Object Name)) { 
@@ -62,6 +73,15 @@ New-PhishSimOverrideRule -Name PhishSimOverridePolicy -Policy PhishSimOverridePo
 # Connect to Exchange Online Management to update default Connection Filter Policy to include IP addresses and domains
 Write-Output "Connecting to Office 365 for anti-spam overrides, look for a pop-up window requesting credentials.`n"
 Connect-ExchangeOnline
+
+# Enable-OrganizationCustomization. This is required to allow the use of the Set-HostedConnectionFilterPolicy cmdlet
+if (-not (Get-OrganizationConfig).IsDehydrated) {
+    Write-Output "Organization customization is already enabled.`n"
+} else {
+    Write-Output "Enabling Organization Customization. If the next commands generate an error stating that Organization Customization isn't enabled, wait 24 hours and try again.`n"
+    Enable-OrganizationCustomization
+    Start-Sleep -Seconds 10  # Wait for organization customization to take effect
+}
 
 ## Add IP addresses to Connection Filter Policy
 Write-Output "Adding IP addresses to Connection Filter Policy.`n"
