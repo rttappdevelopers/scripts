@@ -1,14 +1,8 @@
-### DEPCRECATED, see https://office365itpros.com/2023/04/17/compliance-endpoint-powershell/ ###
-### https://learn.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#updates-for-version-300-the-exo-v3-module ###
-
 # Add Defendify Phishing Simulation allowances to a customer's Office 365 tenant
 ## Reference: https://app.defendify.com/module/phishing-simulations/whitelisting
-## Reference: https://learn.microsoft.com/en-us/powershell/exchange/connect-to-scc-powershell?view=exchange-ps
-## Reference: https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/skip-filtering-phishing-simulations-sec-ops-mailboxes?view=o365-worldwide
 
 # Settings
-# Replace these variables as needed
-
+## Replace these variables as needed
 $PhishingDomains = @(
     "amaznshipping.com",
     "apple-messenger.com",
@@ -91,6 +85,10 @@ Set-HostedConnectionFilterPolicy "Default" -IPAllowList $PhishingIPs
 Write-Output "Adding domains to Anti-Spam Inbound Policy.`n"
 Set-HostedContentFilterPolicy -Identity 'Default' -AllowedSenderDomains $PhishingDomains
 
+# Microsoft 365 Bypass ATP Safe Links
+# Configure Bypass Safe Links rule
+New-TransportRule -Name "Bypass Safe Links for Defendify Phishing Simulations" -SenderIpRanges $PhishingIPs -SetHeaderName "X-MS-Exchange-Organization-SkipSafeLinksProcessing" -SetHeaderValue "1"
+
 # Cleanup and disconnect
-Write-Output "Tasks completed."
-#Disconnect-ExchangeOnline
+Write-Output "Tasks completed, disconnecting."
+Disconnect-ExchangeOnline
