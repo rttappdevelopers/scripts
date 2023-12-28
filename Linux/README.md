@@ -170,6 +170,8 @@ dmidecode -t 16,17                  # Memory info: Max, DIMMS installed in each 
 dmidecode -t memory
 dmidecode -t 4                      # Get CPU info
 dmidecode -t processor    
+lspci                               # Get PCI attached hardware information, add -v for more info
+lsusb                               # Get USB attached hardware information, add -v for more info
 ```
 
 ## Run a command
