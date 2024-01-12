@@ -26,7 +26,7 @@ $filteredUsers = $usersareadmins | Where-Object {
 
 $filteredUsersCount = ($filteredUsers | Measure-Object).Count
 Write-Output "Number of identified users: $filteredUsersCount"
-Write-Output "Identified users: $filteredUsers"
+Write-Output "Identified users: " $filteredUsers
 
 # Are we demoting the listed users?
 If ($demote -eq "yes")
