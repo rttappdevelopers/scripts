@@ -1,5 +1,5 @@
 # Common exclusions
-$exclusions = @('Name1', 'Name 2')
+$exclusions = @('Administrator', 'Domain Admins', 'admin')
 
 # Add additional exclusions to array above, if supplied in RMM job
 $exclude = $env:exclude
@@ -13,7 +13,6 @@ if ([string]::IsNullOrEmpty($exclude)) {
 }
 Write-Output "Excluding from audit (regardless of presence on system): $exclusionsTotal"
 
-
 # Get user list from system
 Write-Output "`nAuditing users in Administrators group.`n"
 $usersareadmins = (Get-LocalGroupMember administrators | Select-Object Name)
@@ -24,9 +23,14 @@ $filteredUsers = $usersareadmins | Where-Object {
     -not ($exclusionsTotal -contains $currentUser)
 }
 
+# Count the number of users identified
 $filteredUsersCount = ($filteredUsers | Measure-Object).Count
 Write-Output "Number of identified users: $filteredUsersCount"
-Write-Output "Identified users: " $filteredUsers
+
+# Convert $filteredUsers to a csv string
+$filteredUsersList = $filteredUsers | ForEach-Object { $_.Name.Split('\')[-1] }
+$filteredUsersCSV = $filteredUsersList -join ","
+Write-Output "Identified users: $filteredUsersCSV"
 
 # Are we demoting the listed users?
 If ($demote -eq "yes")
@@ -53,5 +57,5 @@ If ($demote -eq "yes")
 }
 
 # Post the count of non-IT admin users to the RMM User Defined Field for the computer
-Write-Output "Logging resulting users: $filteredUsersCount"
-Set-ItemProperty "HKLM:\Software\CentraStage" -Name "Custom5" -Value "$filteredUsersCount"
+Write-Output "Logging resulting users count to RMM User Defined Field."
+Set-ItemProperty "HKLM:\Software\CentraStage" -Name "Custom5" -Value "$filteredUsersCount $filteredUsersCSV"
