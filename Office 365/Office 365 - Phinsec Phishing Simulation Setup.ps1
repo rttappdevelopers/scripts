@@ -15,8 +15,39 @@ $PhishingDomains = @(
     "notificationhandler.com"
 )
 
+$DefendifyDomains = @(
+    "amaznshipping.com",
+    "apple-messenger.com",
+    "defendify.com",
+    "defendify.net",
+    "diversitymattersmost.org",
+    "egiftcard.zone",
+    "getdropbox.net",
+    "getpassword.help",
+    "googlalerts.news",
+    "linkedinvitations.com",
+    "message.fail",
+    "resetmypassword.link",
+    "shipment-update.com",
+    "slcknotifier.com",
+    "ticktokapp.com",
+    "us-gov.org",
+    "vemnopayment.com",
+    "zoomeetings.us",
+    "missive.defendify.com",
+    "missive.defendify.net",
+    "phishing.defendify.com",
+    "phishing.defendify.net"
+)
+
 $PhishingIPs = @(
     "198.2.177.227"
+)
+
+$DefendifyIPs = @(
+    "108.61.75.52",
+    "149.28.42.39",
+    "207.246.122.254"
 )
 
 # Check for module ExchangeOnlineManagement and get current version if present, install if not present, upgrade if newer version than current is available
@@ -47,7 +78,7 @@ if ($null -eq (Get-PhishSimOverridePolicy | Select-Object Name)) {
 $F20PhishingDomains = $PhishingDomains | Select-Object -First 20  # There is a limit to 20 domains in a Phishing Simulation Policy
 if (-Not $null -eq (Get-PhishSimOverriderule -Policy "PhishSimOverridePolicy")) { 
     Write-Output "Removing existing Phishing Simulation Override Policy.`n"
-    Get-PhishSimOverriderule  -Policy "PhishSimOverridePolicy" | Remove-PhishSimOverrideRule 
+    Get-PhishSimOverriderule  -Policy "PhishSimOverridePolicy" | Remove-PhishSimOverrideRule -Confirm:$false
 }
 
 Write-Output "Adding domains and IP addresses to the Phishing Simulation Override Policy.`n"
@@ -66,19 +97,26 @@ if (-not (Get-OrganizationConfig).IsDehydrated) {
     Start-Sleep -Seconds 10  # Wait for organization customization to take effect
 }
 
-## Add IP addresses to Connection Filter Policy
+## Add/replace IP addresses to Connection Filter Policy
 Write-Output "Adding IP addresses to Connection Filter Policy.`n"
-Set-HostedConnectionFilterPolicy "Default" -IPAllowList $PhishingIPs
+Set-HostedConnectionFilterPolicy "Default" -IPAllowList @{add=$PhishingIPs; remove=$DefendifyIPs}
 
-## Add domains to Anti-Spam Inbound Policy
+## Add/replace domains to Anti-Spam Inbound Policy
 Write-Output "Adding domains to Anti-Spam Inbound Policy.`n"
-Set-HostedContentFilterPolicy -Identity 'Default' -AllowedSenderDomains $PhishingDomains
+Set-HostedContentFilterPolicy -Identity 'Default' -AllowedSenderDomains @{add=$PhishingDomains; remove=$DefendifyDomains}
 
 # Microsoft 365 Bypass ATP Safe Links
+# Look for and remove any transport rules with Defendify in the name
+$DefendifyRules = Get-TransportRule | Where-Object {$_.Name -like "*Defendify*"}
+if ($null -ne $DefendifyRules) {
+    Write-Output "Removing existing Defendify Transport Rules.`n"
+    $DefendifyRules | Remove-TransportRule -Confirm:$false
+}
+
 # Configure Bypass Safe Links rule
 New-TransportRule -Name "Bypass Safe Links for Phinsec Phishing Simulations" -SenderIpRanges $PhishingIPs -SetHeaderName "X-MS-Exchange-Organization-SkipSafeLinksProcessing" -SetHeaderValue "1"
 New-TransportRule -Name "Bypass Focused Inbox for Phinsec Phishing Simulations" -SenderIpRanges $PhishingIPs -SetHeaderName "X-MS-Exchange-Organization-BypassFocusedInbox" -SetHeaderValue "True"
 
 # Cleanup and disconnect
 Write-Output "Tasks completed, disconnecting."
-Disconnect-ExchangeOnline
+Disconnect-ExchangeOnline -Confirm:$false
