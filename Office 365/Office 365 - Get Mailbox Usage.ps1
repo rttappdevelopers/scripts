@@ -1,9 +1,4 @@
-# Sign into Office 365 and get mailbox usage statistics, correlating each mailbox with its user account. Convert bytes to GB for easier reading.
-# This script requires the Exchange Online Management module to be installed. You can install it by running Install-Module -Name ExchangeOnlineManagement.
-# The script will prompt you to sign in to Office 365 if you are not already signed in.
-# The script will output a CSV file with the following columns: UserPrincipalName, DisplayName, MailboxSize, ItemCount, LastLogonTime, LastLogoffTime, LastLogonUserAccount, LastLogoffUserAccount
-# The script will also output the mailbox usage statistics to the screen.
-
+# Get mailbox statistics for each user in Office 365 and output to CSV
 # check for and create output directory C:\temp if it does not exist
 if (-not (Test-Path -Path "C:\temp")) {
     New-Item -Path "C:\temp" -ItemType "directory"
