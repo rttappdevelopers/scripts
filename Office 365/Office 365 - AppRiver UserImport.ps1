@@ -1,5 +1,4 @@
-﻿Try {Set-ExecutionPolicy RemoteSigned} catch {Write-Output "Run PowerShell as administrator"; exit}
-$ErrorActionPreference = "Stop"
+﻿Set-ExecutionPolicy RemoteSigned
 
 # Settings
 # Replace these variables as needed, to affect all users created in AppRiver
@@ -16,28 +15,30 @@ If (-not (Test-Path $exportpath)) { New-Item -Path $exportpath -Type Directory }
 $exportpath = $exportpath + $filename
 $exportpath
 
-# Connect to MS 365
-Write-Output "Connecting to Office 365 `n"
-if (!(Get-InstalledModule -Name "MSOnline")) {
-Install-Module -Name MSOnline
-Import-Module MSOnline
+# Connect to Exchange Online
+Write-Output "Connecting to Exchange Online `n"
+if (!(Get-Module -Name ExchangeOnlineManagement)) {
+    Install-Module -Name ExchangeOnlineManagement -Force
 }
-else {
-Import-Module MSOnline
-}
-Connect-MsolService
+Import-Module ExchangeOnlineManagement
+Connect-ExchangeOnline
 
-# Begin operations
 Function New-SecurePassword {
 $zix_password = "!?@#$%^&*123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".tochararray()
 ($zix_password | Get-Random -Count 20) -Join ''
 }
 
-Write-Output "Pulling data from Office 365 tenant. `n"
-$userlist = Get-MsolUser -All | Where-Object {$_.isLicensed -eq $true} | Select-Object UserPrincipalName, FirstName, LastName, @{Name="Aliases";Expression={($_.ProxyAddresses | Where-Object {($_ -clike "smtp:*") -and ($_ -notlike "*onmicrosoft*") -and ($_ -notlike "*.lan*")} | ForEach-Object {$_ -replace "smtp:",""}) -join "," }}
+# Begin operations
+Write-Output "Pulling data from Exchange Online mailboxes. `n"
+$userlist = Get-EXOMailbox -RecipientTypeDetails UserMailbox -ResultSize unlimited | 
+            Select-Object   @{n="FirstName";e={(Get-User $_.Alias).FirstName}},
+                            @{n="LastName";e={(Get-User $_.Alias).LastName}},
+                            RecipientType,
+                            PrimarySmtpAddress, 
+                            @{Name="Aliases";Expression={($_.EmailAddresses | Where-Object {($_ -clike "smtp:*") -and ($_ -notlike "*onmicrosoft*")} | ForEach-Object {$_ -replace "smtp:",""}) -join "," }}
 
 $userHash = @(
-    @{ Label = "EmailAddress"; Expression = {$_.UserPrincipalName} },
+    @{ Label = "EmailAddress"; Expression = {$_.PrimarySMTPAddress} },
     @{ Label = "FirstName"; Expression = {$_.FirstName} },
     @{ Label = "LastName"; Expression = {$_.LastName} },
     @{ Label = "Password"; Expression = {(New-SecurePassword)} },
