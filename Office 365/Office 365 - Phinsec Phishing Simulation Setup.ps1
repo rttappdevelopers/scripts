@@ -69,7 +69,7 @@ Write-Output "Connecting to Office 365 for anti-phishing overrides, look for a p
 Connect-IPPSSession
 
 ## Check for existing phishing override policy and create one if it one doesn't exist (there can be only one or there's an error)
-if ($null -eq (Get-PhishSimOverridePolicy | Select-Object Name)) { 
+if ($null -eq (Get-ExoPhishSimOverrideRule | Select-Object Name)) { 
     Write-Output "Creating new Phishing Simulation Override Policy.`n"
     New-PhishSimOverridePolicy -Name PhishSimOverridePolicy 
 }
