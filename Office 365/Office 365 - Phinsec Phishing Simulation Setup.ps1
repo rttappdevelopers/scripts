@@ -50,43 +50,34 @@ $DefendifyIPs = @(
     "207.246.122.254"
 )
 
-# Check for module ExchangeOnlineManagement and get current version if present, install if not present, upgrade if newer version than current is available
+# Install and import the ExchangeOnlineManagement module
 if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) {
     Write-Output "Installing Exchange Online Management PowerShell module.`n"
     Install-Module -Name ExchangeOnlineManagement -Force
-} else {
-    $CurrentVersion = (Get-Module -Name ExchangeOnlineManagement).Version
-    $NewVersion = (Find-Module -Name ExchangeOnlineManagement).Version
-    if ($NewVersion -gt $CurrentVersion) {
-        Write-Output "Updating Exchange Online Management PowerShell module from $CurrentVersion to $NewVersion.`n"
-        Update-Module -Name ExchangeOnlineManagement -Force
-    }
 }
-Import-Module ExchangeOnlineManagement
+Import-Module ExchangeOnlineManagement -Force
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
 Write-Output "Connecting to Office 365 for anti-phishing overrides, look for a pop-up window requesting credentials.`n"
 Connect-IPPSSession
-
-## Check for existing phishing override policy and create one if it one doesn't exist (there can be only one or there's an error)
-if ($null -eq (Get-ExoPhishSimOverrideRule | Select-Object Name)) { 
-    Write-Output "Creating new Phishing Simulation Override Policy.`n"
-    New-PhishSimOverridePolicy -Name PhishSimOverridePolicy 
-}
+Connect-ExchangeOnline
 
 ## Add new phishing override policy, removing current to replace existing
 $F20PhishingDomains = $PhishingDomains | Select-Object -First 20  # There is a limit to 20 domains in a Phishing Simulation Policy
-if (-Not $null -eq (Get-PhishSimOverriderule -Policy "PhishSimOverridePolicy")) { 
+if (-Not $null -eq (Get-ExoPhishSimOverrideRule -Policy "PhishSimOverridePolicy" -ErrorAction SilentlyContinue)) {
     Write-Output "Removing existing Phishing Simulation Override Policy.`n"
-    Get-PhishSimOverriderule  -Policy "PhishSimOverridePolicy" | Remove-PhishSimOverrideRule -Confirm:$false
+    Get-ExoPhishSimOverrideRule  -Policy PhishSimOverridePolicy | Remove-ExoPhishSimOverrideRule -Confirm:$false
 }
 
-Write-Output "Adding domains and IP addresses to the Phishing Simulation Override Policy.`n"
-New-PhishSimOverrideRule -Name PhishSimOverridePolicy -Policy PhishSimOverridePolicy -Domains $F20PhishingDomains -SenderIpRanges $PhishingIPs
+# Create new Phishing Simulation Override Policy
+Write-Output "Creating new Phishing Simulation Override Policy.`n"
+New-PhishSimOverridePolicy -Name "PhishSimOverridePolicy"
+
+Write-Output "Adding domains and IP addresses to a new Phishing Simulation Override Policy.`n"
+New-ExoPhishSimOverrideRule -Name "PhishSimOverrideRule" -Policy "PhishSimOverridePolicy" -Domains $F20PhishingDomains -SenderIpRanges $PhishingIPs
 
 # Connect to Exchange Online Management to update default Connection Filter Policy to include IP addresses and domains
 Write-Output "Connecting to Office 365 for anti-spam overrides, look for a pop-up window requesting credentials.`n"
-Connect-ExchangeOnline
 
 # Enable-OrganizationCustomization. This is required to allow the use of the Set-HostedConnectionFilterPolicy cmdlet
 if (-not (Get-OrganizationConfig).IsDehydrated) {
@@ -119,4 +110,5 @@ New-TransportRule -Name "Bypass Focused Inbox for Phinsec Phishing Simulations" 
 
 # Cleanup and disconnect
 Write-Output "Tasks completed, disconnecting."
-Disconnect-ExchangeOnline -Confirm:$false
+#Disconnect-ExchangeOnline -Confirm:$false
+#Disconnect-IPPSSession -Confirm:$false
