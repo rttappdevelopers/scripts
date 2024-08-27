@@ -33,10 +33,10 @@ getHiddenUserUid() {
 
 # Set the default values of the arguments
 _arg_user="rttadmin" # set default username to rttadmin if not provided by Parameters field
-_arg_pass=${roundtableAdmin} # set default password to the Custom Field 'roundtableAdmin' value if not provided by Parameters field
-echo "Username: $_arg_user" # print username to log to validate input during testing - REMOVE BEFORE PRODUCTION
-echo "Password: $_arg_pass / $roundtableAdmin" # print password to log to validate input during testing - REMOVE BEFORE PRODUCTION
-exit # exit script to validate input during testing - REMOVE BEFORE PRODUCTION
+
+# if environment variable $password is not set at runtime or is empty, set $_arg_pass to the org-level Custom Field value of 'roundtableAdmin'
+roundtableAdmin=$(/Applications/NinjaRMMAgent/programdata/ninjarmm-cli get roundtableAdmin) # Supplied by org-level Custom Field
+_arg_pass=${password:-$roundtableAdmin} # set default password to the Custom Field 'roundtableAdmin' value if not provided by Parameters field
 
 if [[ -z "${_arg_user}" ]]; then
     die "FATAL ERROR: User Name is required. '$_arg_user'" 1
@@ -64,6 +64,7 @@ if [ "$(id -u)" -eq 0 ]; then
         dscl . -create /Users/"$_arg_user" IsHidden 1 # Hide the user from the login window
         dscl . -create /Users/"$_arg_user" NFSHomeDirectory /Users/"$_arg_user"
         dscl . -passwd /Users/"$_arg_user" "$_arg_pass"
+        dscl . -append /Users/"$_arg_user" AuthenticationAuthority ";DisabledTags;SecureToken" # Use secure token, bootstrap token, and volume ownership in deployments
         dscl . -append /Groups/admin GroupMembership "$_arg_user"
         dscl . -append /Groups/_lpadmin GroupMembership "$_arg_user"
         dscl . -append /Groups/_appserveradm GroupMembership "$_arg_user"
