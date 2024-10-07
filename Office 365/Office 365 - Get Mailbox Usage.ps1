@@ -36,5 +36,8 @@ Write-Output "File size: $fileSize bytes"
 # output mailbox usage statistics to screen
 $mailboxUsage | Format-Table -AutoSize
 
+# open file
+Invoke-Item $file
+
 # sign out of Office 365
 Disconnect-ExchangeOnline -Confirm:$false
