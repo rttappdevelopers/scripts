@@ -12,18 +12,29 @@ Set-ExecutionPolicy RemoteSigned
 # Is the Exchange Online Management PowerShell module installed? If not, install it
 Write-Output "Connecting to Office 365"
 if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
-        Install-Module -Name ExchangeOnlineManagement
-        Import-Module ExchangeOnlineManagement
-    }
-    else {
-        Import-Module ExchangeOnlineManagement
-    }
+    Install-Module -Name ExchangeOnlineManagement
+    Import-Module ExchangeOnlineManagement
+}
+else {
+    Import-Module ExchangeOnlineManagement
+}
 
 # sign into Office 365
 Connect-ExchangeOnline
 
 # Get mailbox usage statistics
-$mailboxUsage = Get-EXOMailbox -ResultSize Unlimited | Get-EXOMailboxStatistics -PropertySet All | Select-Object DisplayName, @{Name="MailboxSize in MB";Expression={"{0:N0}" -f ($_.TotalItemSize.Value.ToMB())}}, ItemCount, LastLogonTime, MailboxType, @{Name="PrimarySMTPAddress";Expression={(Get-EXOMailbox -Identity $_.MailboxGuid).PrimarySmtpAddress}}
+$mailboxUsage = Get-EXOMailbox -ResultSize Unlimited -Filter {RecipientTypeDetails -eq "UserMailbox"} | ForEach-Object {
+    $mbx = $_
+    $stats = Get-EXOMailboxStatistics -Identity $mbx.UserPrincipalName -PropertySet All
+    [PSCustomObject]@{
+        DisplayName           = $mbx.DisplayName
+        'MailboxSize in MB'   = "{0:N0}" -f ($stats.TotalItemSize.Value.ToMB())
+        ItemCount             = $stats.ItemCount
+        LastLogonTime         = $stats.LastLogonTime
+        MailboxType           = $mbx.MailboxType
+        PrimarySMTPAddress    = $mbx.PrimarySmtpAddress
+    }
+}
 
 # Output mailbox usage statistics to CSV
 $mailboxUsage | Export-Csv -Path $file -NoTypeInformation
