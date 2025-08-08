@@ -33,8 +33,8 @@ set -euo pipefail
 # Get the BitDefender package ID from NinjaRMM custom field.
 bitdefenderMacLinPackage=$(/Applications/NinjaRMMAgent/programdata/ninjarmm-cli get bitdefenderMacLinPackage)
 
-# Validate the package ID format. This regex expects a Base64-like string.
-if [[ -z "$bitdefenderMacLinPackage" || ! "$bitdefenderMacLinPackage" =~ ^[a-zA-Z0-9+/=]+$ ]]; then
+# Validate the package ID format. Allow alphanumeric characters, hyphens, underscores, and common symbols.
+if [[ -z "$bitdefenderMacLinPackage" || ! "$bitdefenderMacLinPackage" =~ ^[a-zA-Z0-9+/=_-]+$ ]]; then
     echo "ERROR: Environment variable 'bitdefenderMacLinPackage' is not set or not in the correct format." >&2
     echo "Provided value: '$bitdefenderMacLinPackage'" >&2
     exit 1
