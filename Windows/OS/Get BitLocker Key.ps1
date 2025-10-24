@@ -45,7 +45,7 @@ try {
             Write-Host "BitLocker recovery key retrieved successfully"
             Write-Host "Recovery Key ID: $($primaryRecoveryKey.KeyProtectorId)"
             Write-Host "Total Recovery Keys Found: $($recoveryKeys.Count)"
-            Write-Host "Recovery Password: $recoveryPassword"
+            # Write-Host "Recovery Password: $recoveryPassword" # Disabled for production
             
             # Publish to Ninja RMM custom field
             Ninja-Property-Set $NinjaCustomFieldName $recoveryPassword
