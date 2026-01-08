@@ -19,10 +19,10 @@ $userid = Read-Host "Enter mailbox address to fetch rules from, or * for all"
 if ($userid -eq "*") {
         $Mailboxes = Get-Mailbox -ResultSize unlimited  | Where-Object {$_.RecipientTypeDetails -eq "UserMailbox"}
         foreach ($Mailbox in $Mailboxes){
-            Get-Mailbox $userid  | Select-Object UserPrincipalName,ForwardingSmtpAddress,DeliverToMailboxAndForward | Export-CSV "C:\temp\mailforwards.csv" -Append
-            Get-InboxRule -Mailbox $Mailbox.UserPrincipalName $includehidden | Select-Object MailboxOwnerID,Name,Enabled, priority, Description | Export-CSV "C:\temp\mailrules.csv" -Append
+            Get-Mailbox $Mailbox.UserPrincipalName | Select-Object UserPrincipalName,ForwardingSmtpAddress,DeliverToMailboxAndForward | Export-CSV "C:\temp\mailforwards.csv" -Append
+            Get-InboxRule -Mailbox $Mailbox.UserPrincipalName -IncludeHidden | Select-Object MailboxOwnerID,Name,Enabled, priority, Description | Export-CSV "C:\temp\mailrules.csv" -Append
         }
     } else {
         Get-Mailbox $userid  | Select-Object UserPrincipalName,ForwardingSmtpAddress,DeliverToMailboxAndForward | Export-CSV "C:\temp\mailforwards.csv" -Append
-        Get-InboxRule -Mailbox $Mailbox.UserPrincipalName $includehidden | Select-Object MailboxOwnerID,Name,Enabled, priority, Description | Export-CSV "C:\temp\mailrules.csv"
+        Get-InboxRule -Mailbox $userid -IncludeHidden | Select-Object MailboxOwnerID,Name,Enabled, priority, Description | Export-CSV "C:\temp\mailrules.csv"
     }
