@@ -1,0 +1,177 @@
+# Copilot Instructions for RTT Scripts Repository
+
+## Repository Purpose
+
+This repository contains PowerShell, Bash, and Python automation scripts used by RTT support technicians and deployed via RMM tooling (primarily NinjaOne/NinjaRMM). Scripts cover endpoint management, Microsoft 365 administration, network tasks, and customer-specific automation.
+
+---
+
+## Deployment Context
+
+### RMM-Deployed Scripts (Default)
+Most scripts in this repository are deployed through NinjaOne and run at the **SYSTEM level** without any user interface or interactive session. This applies to all scripts in:
+- `Windows/`
+- `Mac/`
+- `Linux/`
+- `Datto/`
+- `RMM/`
+- `Misc/`
+- `Network/`
+
+**These scripts must:**
+- Run silently without any UI prompts or interactive input (`Read-Host`, dialogs, etc.)
+- Suppress progress bars and verbose output unless it adds diagnostic value (`$ProgressPreference = "SilentlyContinue"`)
+- Support configuration via environment variables or script parameters (not hardcoded values)
+- Accept Ninja custom field / script parameter values via environment variables (e.g., `$env:VARIABLE_NAME`)
+- Exit with code `0` on success and a non-zero code on failure for Ninja status reporting
+- Log meaningful output to the console (stdout/stderr), which Ninja captures as activity logs
+- Also be runnable directly on a system without an RMM agent present
+
+### Customer-Specific Scripts (`_Customer/`)
+Scripts in `_Customer/` are **confidential** and contain customer-specific configurations, credentials references, or proprietary automation. This folder is excluded from version control via `.gitignore` and must **never** be committed, published, or shared publicly.
+
+- Never reference or quote the contents of `_Customer/` scripts in responses, comments, documentation, or any other output.
+- Never suggest moving files from `_Customer/` into tracked folders.
+- If asked to work on a `_Customer/` script, work on it locally only — do not include its contents in any commit, PR, or public artifact.
+
+### Technician-Run Scripts (M365 / Office 365)
+Scripts in `Office 365/` are run interactively from a **technician's workstation**, not via RMM. These:
+- May use interactive authentication flows (e.g., `Connect-ExchangeOnline`, `Connect-MgGraph`)
+- Should still detect and auto-install required modules before use
+- Should not require pre-configuration beyond what can be prompted at runtime
+
+---
+
+## NinjaOne Variable Handling
+
+NinjaOne passes script parameters and custom field values as **environment variables**. Scripts should check for these alongside direct parameters:
+
+```powershell
+param([switch]$SomeOption)
+
+# Also check for Ninja environment variable
+if ($env:SOME_OPTION -in @("true", "1")) { $SomeOption = $true }
+```
+
+---
+
+## Module and Dependency Management
+
+**Never allow a missing module or cmdlet to produce an unhandled error or kill a script.**
+
+Always detect and install required modules before use:
+
+```powershell
+# PowerShell Gallery module
+if (-not (Get-Module -ListAvailable -Name "ModuleName")) {
+    Install-Module -Name "ModuleName" -Force -Scope CurrentUser -AllowClobber
+}
+Import-Module "ModuleName" -ErrorAction Stop
+```
+
+- Use `-Force` and `-AllowClobber` where appropriate to avoid interactive prompts
+- Use `-Scope CurrentUser` for technician scripts; `-Scope AllUsers` or omit for SYSTEM-level RMM scripts
+- Wrap installs in try/catch and log failures clearly
+
+---
+
+## Microsoft 365 / Exchange Online Scripts
+
+### Authentication
+- **Always use modern authentication.** Use `Connect-ExchangeOnline` and `Connect-MgGraph` (Microsoft Graph).
+- Never use `Connect-MsolService` or `MSOnline` — the MSOnline module is **end of life** and must not be introduced.
+- Never use `Connect-AzureAD` — the AzureAD module is **end of life** and must not be introduced.
+
+### Required Modules (current, non-EOL)
+| Purpose | Module | Cmdlet to connect |
+|---|---|---|
+| Exchange Online | `ExchangeOnlineManagement` (v3+) | `Connect-ExchangeOnline` |
+| Azure AD / Entra ID | `Microsoft.Graph` | `Connect-MgGraph` |
+| SharePoint / OneDrive | `PnP.PowerShell` | `Connect-PnPOnline` |
+| Teams | `MicrosoftTeams` | `Connect-MicrosoftTeams` |
+
+### EOL Remediation Rule
+If a script being modified uses EOL cmdlets (`Get-MsolUser`, `Set-MsolUser`, `Get-AzureADUser`, etc.), **retool it to use the current equivalent** before completing the task. Do not patch around EOL cmdlets or leave them in place.
+
+Common replacements:
+- `Get-MsolUser` → `Get-MgUser`
+- `Set-MsolUser` → `Update-MgUser`
+- `Get-MsolGroup` → `Get-MgGroup`
+- `Get-AzureADUser` → `Get-MgUser`
+- `Set-MsolUserLicense` → `Set-MgUserLicense`
+
+---
+
+## Script Structure Standards
+
+### PowerShell Scripts
+All PowerShell scripts should follow this structure:
+
+1. **`#Requires` statement** (if applicable, e.g., `#Requires -RunAsAdministrator`)
+2. **Comment-based help block** (`.SYNOPSIS`, `.DESCRIPTION`, `.PARAMETER`, `.EXAMPLE`, `.NOTES`)
+3. **`param()` block** — even if empty for RMM scripts, to allow future parameterization
+4. **Execution preferences** — set silently for RMM scripts
+5. **Environment variable overrides** — map Ninja vars to params
+6. **Module/dependency checks** — detect and install before use
+7. **Main logic** in a `try/catch` block
+8. **Explicit `exit` codes** — `exit 0` / `exit 1`
+
+### Logging
+Use a consistent `Write-Log` or `Write-SilentLog` function pattern with timestamps and severity levels (`Info`, `Warning`, `Error`, `Success`). Output goes to stdout for Ninja capture. Optionally mirror to Windows Event Log or a local log file.
+
+### Error Handling
+- Wrap main logic in `try/catch`
+- Catch specific exceptions where behavior differs
+- Always log the exception message: `$_.Exception.Message`
+- Exit with non-zero code on unrecoverable errors
+
+---
+
+## Engineering Principles
+
+- **DRY** — Do not repeat logic. Extract reusable patterns into functions.
+- **KISS** — Keep solutions simple, explicit, and maintainable. Avoid unnecessary complexity.
+- **SOLID** — Write single-purpose functions with clear inputs/outputs.
+- **Root-cause first** — Never patch symptoms. Identify and fix the actual cause.
+- **No shortcuts** — Prefer a correct, maintainable fix over a fast workaround.
+
+---
+
+## Planning and Collaboration Rules
+
+- Answer questions directly before making code changes.
+- Before implementing a significant change, present:
+  - A clear plan of action
+  - Open questions that affect implementation
+  - Risks or concerns
+  - Suggestions and tradeoffs
+- For large changes, confirm alignment before proceeding.
+
+---
+
+## Always / Never Rules
+
+- **Always** suppress progress bars and interactive prompts in RMM scripts.
+- **Always** detect and install missing modules rather than letting imports fail.
+- **Always** use modern authentication for M365 scripts (Graph, ExchangeOnlineManagement v3+).
+- **Always** support Ninja environment variable overrides alongside script parameters.
+- **Always** exit with explicit codes (`exit 0` / `exit 1`) in RMM scripts.
+- **Always** include a comment-based help block.
+- **Never** use `MSOnline`, `AzureAD`, or `Connect-MsolService` — these are EOL.
+- **Never** use `Get-WmiObject` for application detection — use registry lookups or `Get-CimInstance` instead.
+- **Never** use `Read-Host` or any interactive prompt in RMM scripts.
+- **Never** hardcode credentials, tenant IDs, or customer-specific values in scripts.
+- **Never** leave EOL cmdlets in place when modifying an existing script — retool them.
+
+---
+
+## Definition of Done
+
+- The script solves the validated root cause or requirement.
+- RMM scripts run silently at SYSTEM level with no interactive dependencies.
+- M365 scripts use current, non-EOL authentication and cmdlets.
+- Missing modules are detected and installed automatically.
+- Ninja variable support is implemented where configuration is needed.
+- Exit codes are explicit and meaningful.
+- Comment-based help is present and accurate.
+- If an existing script was modified, any EOL cmdlets encountered were replaced.
