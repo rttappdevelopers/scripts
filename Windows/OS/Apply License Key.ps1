@@ -35,20 +35,36 @@ if (-not $LicenseKey) {
     exit 1
 }
 
+# Function to get current license status
+function Get-LicenseStatus {
+    try {
+        $output = cscript.exe C:\Windows\System32\slmgr.vbs /dli 2>&1 | Out-String
+        return $output
+    }
+    catch {
+        Write-Error "Failed to retrieve license status: $_"
+        return $null
+    }
+}
+
+# Display current license status before changes
+Write-Host "Current license status (before):" -ForegroundColor Yellow
+Write-Host (Get-LicenseStatus) -ForegroundColor Gray
+
 # Apply the license key
 Write-Host "Applying Windows license key..." -ForegroundColor Cyan
 try {
-    slmgr.exe /ipk $LicenseKey
-    Start-Sleep -Seconds 2
+    cscript.exe C:\Windows\System32\slmgr.vbs /ipk $LicenseKey | Out-Null
+    Start-Sleep -Seconds 3
     
     # Activate the license
     Write-Host "Activating Windows..." -ForegroundColor Cyan
-    slmgr.exe /ato
-    Start-Sleep -Seconds 2
+    cscript.exe C:\Windows\System32\slmgr.vbs /ato | Out-Null
+    Start-Sleep -Seconds 3
     
-    # Check license status
-    $licenseStatus = slmgr.exe /xpr
-    Write-Host $licenseStatus -ForegroundColor Green
+    # Display license status after changes
+    Write-Host "`nLicense status after application:" -ForegroundColor Yellow
+    Write-Host (Get-LicenseStatus) -ForegroundColor Green
     Write-Host "License key applied and activated successfully" -ForegroundColor Green
 }
 catch {
