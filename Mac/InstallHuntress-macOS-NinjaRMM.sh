@@ -44,7 +44,7 @@
 
 
 # Replace __ACCOUNT_KEY__ with your account secret key (from your Huntress portal's "download agent" section)
-defaultAccountKey="f4818634d180f2f4b75b4b9146a3f39d"
+defaultAccountKey=""
 
 # As of NinjaRMM macOS Agent Version 5.3.4848, environment variables are available to pull the customer Organization name in scripting.
 # If you have a preferred "placeholder" organization name, you can set that below within the double quotes.
