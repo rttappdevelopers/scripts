@@ -10,7 +10,8 @@ if (!(Get-InstalledModule -Name "ExchangeOnlineManagement" -ErrorAction Silently
     Import-Module ExchangeOnlineManagement
 }
 
-Connect-ExchangeOnline
+# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
+Connect-ExchangeOnline -Device
 
 # Get available message trace reports
 Write-Output "`nRetrieving available message trace reports..."

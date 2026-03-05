@@ -81,9 +81,10 @@ try {
 }
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
-Write-Output "Connecting to Office 365 for anti-phishing overrides, look for a pop-up window requesting credentials.`n"
-Connect-IPPSSession
-Connect-ExchangeOnline
+# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
+Write-Output "Connecting to Office 365 - follow the device login prompt in your browser.`n"
+Connect-IPPSSession -Device
+Connect-ExchangeOnline -Device
 
 ## Add new phishing override policy, removing current to replace existing
 $F20PhishingDomains = $PhishingDomains | Select-Object -First 20  # There is a limit to 20 domains in a Phishing Simulation Policy

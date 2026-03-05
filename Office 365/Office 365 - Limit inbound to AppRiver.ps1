@@ -33,7 +33,9 @@ try {
 }
 
 # Connect to Exchange Online
-Connect-ExchangeOnline
+# -Device uses device code flow (browser-based), which avoids the WAM window handle
+# error that occurs when running from an elevated or non-standard terminal context.
+Connect-ExchangeOnline -Device
 
 # AppRiver IP ranges as an array for readability
 $appRiverIPs = @(

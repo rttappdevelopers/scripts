@@ -9,7 +9,8 @@ if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
 Import-Module ExchangeOnlineManagement
 
 # Connect to Exchange Online
-Connect-ExchangeOnline
+# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
+Connect-ExchangeOnline -Device
 
 # Execute the transport rule command
 $ruleParams = @{

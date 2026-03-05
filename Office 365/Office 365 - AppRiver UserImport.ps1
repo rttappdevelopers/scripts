@@ -21,7 +21,8 @@ if (!(Get-Module -Name ExchangeOnlineManagement)) {
     Install-Module -Name ExchangeOnlineManagement -Force
 }
 Import-Module ExchangeOnlineManagement
-Connect-ExchangeOnline
+# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
+Connect-ExchangeOnline -Device
 
 Function New-SecurePassword {
 $zix_password = "!?@#$%^&*123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".tochararray()

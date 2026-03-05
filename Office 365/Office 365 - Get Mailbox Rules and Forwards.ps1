@@ -12,7 +12,8 @@ if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
     }
 
 # Connect to Office 365 platform
-Connect-ExchangeOnline
+# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
+Connect-ExchangeOnline -Device
 
 $userid = Read-Host "Enter mailbox address to fetch rules from, or * for all"
 

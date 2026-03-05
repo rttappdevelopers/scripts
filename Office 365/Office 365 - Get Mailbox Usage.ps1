@@ -110,7 +110,7 @@ $graphScopes = @(
 )
 
 try {
-    Connect-MgGraph -Scopes $graphScopes -NoWelcome
+    Connect-MgGraph -Scopes $graphScopes -NoWelcome -UseDeviceAuthentication
     Write-Host "Successfully connected to Microsoft Graph." -ForegroundColor Green
 }
 catch {
@@ -120,7 +120,7 @@ catch {
 
 Write-Host "Connecting to Exchange Online..." -ForegroundColor Cyan
 try {
-    Connect-ExchangeOnline -ShowBanner:$false
+    Connect-ExchangeOnline -ShowBanner:$false -Device
     Write-Host "Successfully connected to Exchange Online." -ForegroundColor Green
 }
 catch {

@@ -35,7 +35,7 @@ try {
 # Connect to Microsoft Graph
 Write-Host "Connecting to Microsoft Graph..."
 try {
-    Connect-MgGraph -Scopes "User.Read.All", "UserAuthenticationMethod.Read.All", "AuditLog.Read.All" -NoWelcome -ErrorAction Stop
+    Connect-MgGraph -Scopes "User.Read.All", "UserAuthenticationMethod.Read.All", "AuditLog.Read.All" -NoWelcome -UseDeviceAuthentication -ErrorAction Stop
 } catch {
     Write-Error "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
     exit 1

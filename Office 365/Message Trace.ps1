@@ -12,7 +12,8 @@ if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
     }
 
 # Connect to Office 365 platform
-Connect-ExchangeOnline
+# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
+Connect-ExchangeOnline -Device
 
 # Gather parameters
 $sender = Read-Host "Enter sender email address (* for all)"
