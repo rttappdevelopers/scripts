@@ -79,6 +79,19 @@ function Install-AndImportModule {
     }
 }
 
+# Ensure PowerShellGet is current enough to reliably install modules on older systems
+try {
+    $psGet = Get-Module -ListAvailable -Name PowerShellGet | Sort-Object Version -Descending | Select-Object -First 1
+    if ($psGet.Version -lt [Version]'2.0') {
+        Write-Host "Updating PowerShellGet before installing dependencies..."
+        Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
+        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
+        exit 1
+    }
+} catch {
+    Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
+}
+
 Install-AndImportModule -ModuleName Microsoft.Graph
 Install-AndImportModule -ModuleName ExchangeOnlineManagement
 

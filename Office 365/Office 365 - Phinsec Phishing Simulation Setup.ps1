@@ -50,12 +50,35 @@ $DefendifyIPs = @(
     "207.246.122.254"
 )
 
+# Ensure PowerShellGet is current enough to reliably install modules on older systems
+try {
+    $psGet = Get-Module -ListAvailable -Name PowerShellGet | Sort-Object Version -Descending | Select-Object -First 1
+    if ($psGet.Version -lt [Version]'2.0') {
+        Write-Host "Updating PowerShellGet before installing dependencies..."
+        Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
+        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
+        exit 1
+    }
+} catch {
+    Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
+}
+
 # Install and import the ExchangeOnlineManagement module
 if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) {
     Write-Output "Installing Exchange Online Management PowerShell module.`n"
-    Install-Module -Name ExchangeOnlineManagement -Force
+    try {
+        Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to install ExchangeOnlineManagement: $($_.Exception.Message)"
+        exit 1
+    }
 }
-Import-Module ExchangeOnlineManagement -Force
+try {
+    Import-Module ExchangeOnlineManagement -Force -ErrorAction Stop
+} catch {
+    Write-Error "Failed to import ExchangeOnlineManagement: $($_.Exception.Message)"
+    exit 1
+}
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
 Write-Output "Connecting to Office 365 for anti-phishing overrides, look for a pop-up window requesting credentials.`n"
