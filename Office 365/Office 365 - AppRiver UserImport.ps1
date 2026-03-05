@@ -1,4 +1,4 @@
-﻿Set-ExecutionPolicy RemoteSigned
+Set-ExecutionPolicy RemoteSigned
 
 # Settings
 # Replace these variables as needed, to affect all users created in AppRiver
@@ -21,8 +21,8 @@ if (!(Get-Module -Name ExchangeOnlineManagement)) {
     Install-Module -Name ExchangeOnlineManagement -Force
 }
 Import-Module ExchangeOnlineManagement
-# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
-Connect-ExchangeOnline -Device
+# -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
+Connect-ExchangeOnline -DisableWAM
 
 Function New-SecurePassword {
 $zix_password = "!?@#$%^&*123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".tochararray()

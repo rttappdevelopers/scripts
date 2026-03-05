@@ -81,10 +81,10 @@ try {
 }
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
-# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
-Write-Output "Connecting to Office 365 - follow the device login prompt in your browser.`n"
-Connect-IPPSSession -Device
-Connect-ExchangeOnline -Device
+# -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
+Write-Output "Connecting to Office 365 - sign in via the browser popup that appears.`n"
+Connect-IPPSSession -DisableWAM
+Connect-ExchangeOnline -DisableWAM
 
 ## Add new phishing override policy, removing current to replace existing
 $F20PhishingDomains = $PhishingDomains | Select-Object -First 20  # There is a limit to 20 domains in a Phishing Simulation Policy

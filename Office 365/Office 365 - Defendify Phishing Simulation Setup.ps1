@@ -45,9 +45,9 @@ if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) {
 Import-Module ExchangeOnlineManagement
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
-# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
-Write-Output "Connecting to Office 365 - follow the device login prompt in your browser.`n"
-Connect-IPPSSession -Device
+# -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
+Write-Output "Connecting to Office 365 - sign in via the browser popup that appears.`n"
+Connect-IPPSSession -DisableWAM
 
 ## Check for existing phishing override policy and create one if it one doesn't exist (there can be only one or there's an error)
 if ($null -eq (Get-PhishSimOverridePolicy | Select-Object Name)) { 
@@ -66,8 +66,8 @@ Write-Output "Adding domains and IP addresses to the Phishing Simulation Overrid
 New-PhishSimOverrideRule -Name PhishSimOverridePolicy -Policy PhishSimOverridePolicy -Domains $F20PhishingDomains -SenderIpRanges $PhishingIPs
 
 # Connect to Exchange Online Management to update default Connection Filter Policy to include IP addresses and domains
-Write-Output "Connecting to Exchange Online - follow the device login prompt in your browser.`n"
-Connect-ExchangeOnline -Device
+Write-Output "Connecting to Exchange Online - sign in via the browser popup that appears.`n"
+Connect-ExchangeOnline -DisableWAM
 
 # Enable-OrganizationCustomization. This is required to allow the use of the Set-HostedConnectionFilterPolicy cmdlet
 if (-not (Get-OrganizationConfig).IsDehydrated) {

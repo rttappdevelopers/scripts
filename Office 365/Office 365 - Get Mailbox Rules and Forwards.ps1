@@ -1,4 +1,4 @@
-﻿# Get user mail rules and forwarding
+# Get user mail rules and forwarding
 Set-ExecutionPolicy RemoteSigned
 
 # Is the Exchange Online Management PowerShell module installed? If not, install it
@@ -12,8 +12,8 @@ if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
     }
 
 # Connect to Office 365 platform
-# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
-Connect-ExchangeOnline -Device
+# -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
+Connect-ExchangeOnline -DisableWAM
 
 $userid = Read-Host "Enter mailbox address to fetch rules from, or * for all"
 

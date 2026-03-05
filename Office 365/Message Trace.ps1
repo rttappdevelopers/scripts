@@ -12,8 +12,8 @@ if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
     }
 
 # Connect to Office 365 platform
-# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
-Connect-ExchangeOnline -Device
+# -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
+Connect-ExchangeOnline -DisableWAM
 
 # Gather parameters
 $sender = Read-Host "Enter sender email address (* for all)"

@@ -1,4 +1,4 @@
-﻿# Get list view and CSV file of active users and their MFA status
+# Get list view and CSV file of active users and their MFA status
 # File export goes to "c:\temp\MFAUsers.csv"
 # Note: MSOnline (MSOL) is end-of-life. This script uses Microsoft Graph instead.
 

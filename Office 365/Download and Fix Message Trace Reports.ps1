@@ -10,8 +10,8 @@ if (!(Get-InstalledModule -Name "ExchangeOnlineManagement" -ErrorAction Silently
     Import-Module ExchangeOnlineManagement
 }
 
-# -Device uses device code flow to avoid the WAM window handle error in elevated/non-standard terminals.
-Connect-ExchangeOnline -Device
+# -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
+Connect-ExchangeOnline -DisableWAM
 
 # Get available message trace reports
 Write-Output "`nRetrieving available message trace reports..."
