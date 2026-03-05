@@ -1,3 +1,8 @@
+#Requires -Version 7
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
+    exit 1
+}
 <#
 .SYNOPSIS
     Generates a comprehensive report of Microsoft 365 users, including their assigned licenses,

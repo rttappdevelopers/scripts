@@ -1,3 +1,8 @@
+#Requires -Version 7
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
+    exit 1
+}
 # Get list view and CSV file of active users and their MFA status
 # File export goes to "c:\temp\MFAUsers.csv"
 # Note: MSOnline (MSOL) is end-of-life. This script uses Microsoft Graph instead.

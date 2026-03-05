@@ -1,3 +1,8 @@
+#Requires -Version 7
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
+    exit 1
+}
 # Add Defendify Phishing Simulation allowances to a customer's Office 365 tenant
 ## Reference: https://app.defendify.com/module/phishing-simulations/whitelisting
 

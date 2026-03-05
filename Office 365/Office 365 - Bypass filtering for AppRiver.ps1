@@ -1,3 +1,8 @@
+#Requires -Version 7
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
+    exit 1
+}
 # Description: This script creates a transport rule in Exchange Online to bypass spam filtering for emails coming from AppRiver IP ranges.
 
 # Install Exchange Online module if not already installed
