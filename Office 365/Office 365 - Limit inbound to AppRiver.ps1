@@ -31,6 +31,28 @@ $appRiverIPs = @(
     '74.203.185.12/32'
 )
 
+# Prompt for additional IP addresses
+Write-Output "You can enter additional IP addresses or subnets to include in the transport rule."
+Write-Output "It may be helpful to include a client's static WAN IP address in case they have a copier with scan to email."
+$additionalIPsInput = Read-Host "Enter any additional IP addresses or subnets (comma-delimited), or press Enter to skip:"
+
+# Append additional IPs to the array if provided
+if ($additionalIPsInput.Trim()) {
+    $additionalIPs = $additionalIPsInput -split ',' | ForEach-Object { $_.Trim() }
+    $appRiverIPs += $additionalIPs
+}
+
+# Convert individual IPs (without CIDR notation) to /32 subnets
+$appRiverIPs = $appRiverIPs | ForEach-Object {
+    if ($_ -match '^\d+\.\d+\.\d+\.\d+$') {
+        # IP without CIDR notation - convert to /32
+        "$_/32"
+    } else {
+        # Already has CIDR notation - keep as is
+        $_
+    }
+}
+
 # Splat parameters for New-TransportRule to keep the command multi-line and readable
 $params = @{
     Name                                  = 'Limit Inbound Mail to AppRiver (Quarantine direct send)'
