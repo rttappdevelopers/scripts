@@ -1,12 +1,36 @@
 # Description: This script creates a transport rule in Exchange Online to bypass spam filtering for emails coming from AppRiver IP ranges.
 
+# Ensure PowerShellGet is current enough to reliably install modules on older systems
+try {
+    $psGet = Get-Module -ListAvailable -Name PowerShellGet | Sort-Object Version -Descending | Select-Object -First 1
+    if ($psGet.Version -lt [Version]'2.0') {
+        Write-Host "Updating PowerShellGet before installing dependencies..."
+        Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
+        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
+        exit 1
+    }
+} catch {
+    Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
+}
+
 # Install Exchange Online module if not already installed
 if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
-    Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force
+    Write-Host "Installing ExchangeOnlineManagement module..."
+    try {
+        Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to install ExchangeOnlineManagement: $($_.Exception.Message)"
+        exit 1
+    }
 }
 
 # Import the module
-Import-Module ExchangeOnlineManagement
+try {
+    Import-Module ExchangeOnlineManagement -ErrorAction Stop
+} catch {
+    Write-Error "Failed to import ExchangeOnlineManagement: $($_.Exception.Message)"
+    exit 1
+}
 
 # Connect to Exchange Online
 Connect-ExchangeOnline
