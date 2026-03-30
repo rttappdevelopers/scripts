@@ -225,11 +225,6 @@ detect_by_patterns() {
         echo "Rippling"; return
     fi
 
-    # ---- Apple Business Essentials (Fleetsmith) -----------------------------
-    if echo "$combined" | grep -qiE "com\.fleetsmith\.|businessessentials\.apple\.com"; then
-        echo "Apple Business Essentials"; return
-    fi
-
     # ---- Ivanti (fka MobileIron) --------------------------------------------
     if echo "$combined" | grep -qiE "com\.mobileiron\.|com\.ivanti\.|mobileiron\.com|ivanti\.com"; then
         echo "Ivanti (MobileIron)"; return
@@ -243,6 +238,14 @@ detect_by_patterns() {
     # ---- FileWave -----------------------------------------------------------
     if echo "$combined" | grep -qiE "com\.filewave\.|filewave\.com"; then
         echo "FileWave"; return
+    fi
+
+    # ---- Apple Business Essentials ------------------------------------------
+    # com.apple.business.profile.* identifiers are definitive \u2014 Apple pushes
+    # these exclusively via Apple Business Essentials (not via Jamf, Intune, etc.)
+    # Do NOT match solely on com.apple.profile.mdm \u2014 too generic.
+    if echo "$profiles_data" | grep -qiE "com\.apple\.business\.profile\."; then
+        echo "Apple Business Essentials"; return
     fi
 
     # ---- Enrolled but vendor unrecognised -----------------------------------
