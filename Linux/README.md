@@ -1,5 +1,20 @@
 # Linux
 
+## Table of Contents
+
+- [Scripts](#scripts)
+  - [Agents](#agents)
+  - [Tools](#tools)
+- [Command Reference](#command-reference)
+  - [Filesystem Operations](#filesystem-operations)
+  - [System Functions](#system-functions)
+  - [Network Operations](#network-operations)
+  - [User Functions](#user-functions)
+  - [Advanced](#advanced)
+  - [Resources](#resources)
+
+---
+
 ## Scripts
 
 Scripts are organized into subfolders by function. See [HOWTO.md](../HOWTO.md) for guidance on downloading and running scripts.
@@ -287,7 +302,7 @@ ifconfig     # Legacy "ipconfig"
 
 ## What is my WAN IP
 ```sh
-alias wanip="curl https://wtfismyip.com/text"
+alias wanip="curl https://ifconfig.me"
 ```
 
 ## Domain Name Lookup and DNS Records

@@ -1,5 +1,25 @@
 # Windows
 
+## Table of Contents
+
+- [Scripts](#scripts)
+  - [Applications](#applications)
+  - [CVE Mitigations](#cve-mitigations)
+  - [OS — Maintenance](#os--maintenance)
+  - [OS — Migration](#os--migration)
+  - [OS — Networking](#os--networking)
+  - [OS — Reporting](#os--reporting)
+  - [OS — Security](#os--security)
+  - [OS — User Management](#os--user-management)
+- [Command Reference](#command-reference)
+  - [Filesystem Operations](#filesystem-operations)
+  - [System Functions](#system-functions)
+  - [Network](#network)
+  - [User Functions](#user-functions)
+  - [References](#references)
+
+---
+
 ## Scripts
 
 Scripts are organized into subfolders by function. For guidance on downloading and running any script, see [HOWTO.md](../HOWTO.md).
@@ -207,8 +227,30 @@ CD C:\Temp\             # Change directory to the Temp folder on the C: drive
 CD "C:\Program Files\"  # Changing to a directory with spaces in the name requires quotes
 ```
 **Print working directory**
+```bat
+CD       # In CMD, CD with no arguments prints the current path
+```
+```powershell
+Get-Location  # PowerShell equivalent — also aliased as 'pwd' or 'gl'
+```
 
 **List Files**
+```bat
+DIR                    # List files in current directory
+DIR /A                 # Include hidden and system files
+DIR /S                 # Recursive listing including subdirectories
+DIR /B                 # Bare format (names only, no headers)
+DIR C:\Temp\*.log      # List files matching a pattern
+```
+```powershell
+Get-ChildItem                        # List files and folders — also works as: ls, dir, gci
+ls                                   # Works fine in PowerShell; aliases to Get-ChildItem
+Get-ChildItem -Force                 # Include hidden items
+Get-ChildItem -Recurse               # Recursive listing
+Get-ChildItem -Filter "*.log"        # Filter by name pattern
+Get-ChildItem -File                  # Files only
+Get-ChildItem -Directory             # Folders only
+```
 
 ## Common locations and their aliases
 To use these: %AppData% is the current user's full path to their appdata folder;
@@ -233,13 +275,74 @@ To use these: %AppData% is the current user's full path to their appdata folder;
 
 ## File operations
 **View file contents**
+```bat
+TYPE filename.txt               # Print a file's contents to the terminal
+MORE filename.txt               # Paginate output — press Space to advance
+```
+```powershell
+Get-Content filename.txt        # Print file contents (alias: cat, gc)
+Get-Content filename.txt | More # Paginate output
+```
 
 **Find**
+```bat
+DIR /S /B "filename.txt"        # Search for a file by name recursively
+FINDSTR "search text" file.txt  # Search file contents for a string (like grep)
+FINDSTR /S /I "text" *.log      # Recursive, case-insensitive content search
+```
+```powershell
+Get-ChildItem -Recurse -Filter "filename.txt"              # Find file by name
+Get-ChildItem -Recurse | Where-Object { $_.Name -like "*.log" }  # Pattern match
+Select-String -Path "*.log" -Pattern "error" -Recurse      # Search file contents
+```
 
 **Edit**
+```bat
+NOTEPAD filename.txt    # Open file in Notepad (from CMD or Run dialog)
+```
+```powershell
+notepad filename.txt    # Open in Notepad
+code filename.txt       # Open in VS Code (if installed)
+# Append a line to a file:
+Add-Content -Path filename.txt -Value "new line here"
+# Overwrite a file:
+Set-Content -Path filename.txt -Value "replacement content"
+```
+
+**Copy, Move, Delete**
+```bat
+COPY source.txt dest.txt        # Copy a file
+XCOPY source\ dest\ /E /I      # Copy a folder tree (/E = include empty dirs)
+ROBOCOPY source\ dest\ /MIR    # Mirror copy — best tool for folder sync/backup
+MOVE source.txt C:\dest\        # Move a file
+DEL filename.txt                # Delete a file
+RD /S /Q foldername             # Delete a folder and all its contents
+```
+```powershell
+Copy-Item source.txt dest.txt                        # Copy file
+Copy-Item source\ dest\ -Recurse                    # Copy folder tree
+Move-Item source.txt C:\dest\                        # Move file
+Remove-Item filename.txt                             # Delete file
+Remove-Item foldername -Recurse -Force               # Delete folder and contents
+```
 
 **Symbolic Links**
-Junctions and Hard Links
+```bat
+# Symbolic link (file or folder)
+MKLINK link.txt target.txt           # Create a symbolic link to a file
+MKLINK /D C:\LinkFolder C:\Target    # Create a directory symbolic link
+
+# Junction (folder only, local volumes)
+MKLINK /J C:\LinkFolder C:\Target    # Create a junction
+
+# Hard link (file only, same volume)
+MKLINK /H hardlink.txt original.txt  # Create a hard link
+```
+```powershell
+New-Item -ItemType SymbolicLink -Path C:\LinkFolder -Target C:\Target
+New-Item -ItemType Junction    -Path C:\LinkFolder -Target C:\Target
+New-Item -ItemType HardLink    -Path hardlink.txt  -Target original.txt
+```
 
 **Folders**
 ```powershell
@@ -270,32 +373,67 @@ get-winevent -FilterHashTable @{logname="Application"; id="1001"}| ?{$_.provider
 
 **Disk SMART Status**
 ```powershell
-wmic diskdrive get status  # Get SMART status for each drive
-wmic /namespace:\\root\wmi path MSStorageDriver_FailurePredictStatus  # Check for predicted failure of disk
+# Note: wmic is deprecated in Windows 11 — prefer Get-CimInstance
+Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictStatus
+Get-PhysicalDisk | Select-Object FriendlyName, HealthStatus, OperationalStatus
 ```
 
 # System Functions
 ## Operating System Info
 ```powershell
-get-timezone | Select-Object DisplayName  # Get Time Zone
+Get-ComputerInfo | Select-Object CsName, OsName, OsVersion, OsBuildNumber  # OS name and build
+[System.Environment]::OSVersion                                             # .NET OS version
+Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, OSArchitecture
+Get-TimeZone                                        # Current time zone
+Get-Date                                            # Current date and time
+```
+```bat
+VER                      # Windows version string
+SYSTEMINFO               # Full OS, hardware, and network summary
+SYSTEMINFO | FINDSTR /B /C:"OS Name" /C:"OS Version"
 ```
 
-##	Run a command
-##	Operations
+## Run a command
+```bat
+cmd /c "command"          # Run a CMD command and exit
+start program.exe         # Launch a program without waiting for it
+call script.bat           # Call another batch file and return
+```
 ```powershell
-Get-CimInstance -ClassName win32_operatingsystem | select csname, lastbootuptime  # Get system uptime
-shutdown -r -t 0  # Reboot now (wait time is zero seconds)
+Invoke-Expression "command"                          # Run a string as a command
+Start-Process notepad.exe                            # Launch a process
+Start-Process powershell.exe -Verb RunAs             # Launch elevated (as Admin)
+& "C:\path\to\script.ps1"                            # Call/invoke a script
+powershell -ExecutionPolicy Bypass -File script.ps1  # Run script bypassing policy
+```
+
+## Operations
+```powershell
+Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object CSName, LastBootUpTime  # Get last boot time
+(Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime  # Uptime as a timespan
+Restart-Computer -Force               # Reboot immediately
+Stop-Computer -Force                  # Shut down immediately
+```
+```bat
+shutdown /r /t 0      # Reboot immediately
+shutdown /s /t 0      # Shut down immediately
+shutdown /a           # Abort a pending shutdown
+shutdown /r /t 60 /c "Rebooting for updates"  # Reboot in 60 seconds with message
 ```
 
 ## Services
 ```powershell
-# Get-Service commandlet
-Get-Service {service}                        # Get service status, by name with quotes or alias
+# Get-Service cmdlet
+Get-Service                                  # List all services
+Get-Service {service}                        # Get service status by name
+Get-Service {service} | Start-Service        # Start the service
+Get-Service {service} | Stop-Service         # Stop the service
 Get-Service {service} | Restart-Service      # Restart the service
+Set-Service {service} -StartupType Automatic # Change startup type
 
-# WMI methods
-Get-WmiObject -Class Win32_Service -Filter "Name='ServiceName'"             # Get service info
-(Get-WmiObject -Class Win32_Service -Filter "Name='ServiceName'").delete()  # Delete service
+# CIM methods (note: Get-WmiObject is deprecated — use Get-CimInstance)
+Get-CimInstance -Class Win32_Service -Filter "Name='ServiceName'"   # Get service info
+(Get-CimInstance -Class Win32_Service -Filter "Name='ServiceName'").Delete()  # Delete service
 ```
 
 ```cmd
@@ -323,21 +461,132 @@ Stop-Process -Name "Notepad"                  # Kill the processes named Notepad
 get-process -Name "*notepad*" | Stop-Process  # Get and kill the processes with Notepad in their name
 ```
 
-##	Aliases
+## Aliases
+Windows supports filesystem aliases (junctions and symlinks) similar to Linux symlinks. These let you create a shortcut path that points to another folder — useful for redirecting legacy paths without moving data.
+```bat
+# Create a junction — a directory alias pointing to another folder on the same volume
+MKLINK /J C:\OldPath C:\NewPath
 
-## Connected devices**
+# Create a directory symbolic link — works across volumes, requires admin
+MKLINK /D C:\LinkFolder C:\Target
+
+# List junctions/symlinks in a directory
+DIR /AL C:\SomePath         # /AL shows only reparse points (junctions and symlinks)
+```
+```powershell
+# Create via New-Item
+New-Item -ItemType Junction    -Path C:\OldPath    -Target C:\NewPath
+New-Item -ItemType SymbolicLink -Path C:\LinkFolder -Target C:\Target
+
+# Find all junctions and symlinks under a path
+Get-ChildItem -Recurse | Where-Object { $_.Attributes -match 'ReparsePoint' }
+```
+For **shell command aliases** (mapping one command name to another), see PowerShell's `Get-Alias` / `Set-Alias`.
+
+## Connected Devices
+```powershell
+Get-PnpDevice                                     # List all Plug-and-Play devices
+Get-PnpDevice -PresentOnly                        # Only devices currently connected
+Get-PnpDevice -Class USB                          # USB devices only
+Get-PnpDevice | Where-Object { $_.Status -eq 'Error' }  # Devices with errors
+```
+```bat
+DEVMGMT.MSC     # Open Device Manager (GUI)
+```
 
 # Network
 ## LAN IP
+```powershell
+Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" }
+(Get-NetIPConfiguration).IPv4Address.IPAddress  # Quick one-liner
+```
+```bat
+IPCONFIG                  # Full adapter details
+IPCONFIG /ALL             # Includes MAC address, DHCP server, DNS servers
+```
+
 ## WAN IP
+```powershell
+(Invoke-RestMethod "https://ifconfig.me/ip").Trim()         # Quick WAN IP lookup
+(Invoke-WebRequest "https://api.ipify.org").Content.Trim()
+```
+
 ## Domain Name Lookup and DNS Records
+```powershell
+Resolve-DnsName google.com              # DNS lookup (supports A, MX, TXT, PTR, etc.)
+Resolve-DnsName google.com -Type MX    # Get MX records
+Resolve-DnsName google.com -Type TXT   # Get TXT/SPF records
+Resolve-DnsName 8.8.8.8                # Reverse lookup (PTR)
+```
+```bat
+NSLOOKUP google.com                    # Forward lookup
+NSLOOKUP -type=MX google.com          # MX record lookup
+NSLOOKUP -type=TXT google.com         # TXT record lookup
+```
+
 ## Who owns an IP or domain
+```powershell
+# PowerShell has no built-in whois — use an external tool or online lookup
+# With Windows Subsystem for Linux (WSL):
+whois 8.8.8.8
+# Or use the ARIN REST API:
+(Invoke-RestMethod "https://rdap.arin.net/registry/ip/8.8.8.8").handle
+```
+```bat
+WHOIS 8.8.8.8       # Requires Sysinternals whois.exe in PATH
+                    # Download: https://learn.microsoft.com/en-us/sysinternals/downloads/whois
+```
+
 ## Where is an IP from
+```powershell
+Invoke-RestMethod "https://ipinfo.io/8.8.8.8"       # Returns JSON with city, region, org
+(Invoke-RestMethod "https://ipinfo.io/8.8.8.8/country").Trim()
+```
+
 ## Who is on the network, are they reachable?
+```powershell
+Test-Connection 192.168.1.1 -Count 4         # Ping (PowerShell equivalent)
+Test-Connection 192.168.1.1 -Quiet           # Returns True/False only
+Test-NetConnection 192.168.1.1 -Port 443     # Test TCP port reachability
+1..254 | ForEach-Object { Test-Connection "192.168.1.$_" -Count 1 -Quiet -AsJob }
+# Then check arp table:
+arp -a                                       # Show ARP cache (known LAN IPs and MACs)
+```
+```bat
+PING 192.168.1.1              # Basic ping
+PING -n 1 192.168.1.1         # Single ping
+ARP -A                        # Show ARP table
+```
+
+## Scan a Port
+```powershell
+Test-NetConnection 192.168.1.1 -Port 3389   # Test if RDP port is open
+Test-NetConnection smtp.office365.com -Port 587  # Test SMTP port
+```
+
 ## Remote Command Line
+```powershell
+# PowerShell Remoting (WinRM)
+Enter-PSSession -ComputerName server01                   # Interactive remote session
+Invoke-Command -ComputerName server01 -ScriptBlock { Get-Service }  # Run command remotely
+Invoke-Command -ComputerName server01 -FilePath script.ps1          # Run script remotely
+
+# SSH (available on Windows 10+ and Server 2019+)
+ssh user@server01                      # Open SSH session
+ssh user@server01 "Get-Process"        # Run a single command via SSH
+```
+```bat
+MSTSC /v:192.168.1.100        # Open RDP to an IP address
+PSEXEC \\computername cmd.exe # Remote CMD via Sysinternals PsExec
+```
+
 ## Get Files from the Internet
 ```powershell
-Start-BitsTransfer -Source {URL}
+Invoke-WebRequest -Uri {URL} -OutFile C:\Temp\filename.ext  # Download a file
+Start-BitsTransfer -Source {URL} -Destination C:\Temp\      # BITS transfer (resumable)
+```
+```bat
+curl -o C:\Temp\file.ext {URL}   # curl is available in Windows 10+ CMD
 ```
 
 # User functions
@@ -347,14 +596,55 @@ WHOAMI  # Get current sername, presented as authentication source and username
         # COMPTUERNAME\USER, or DOMAIN\USER
 ```
 
-##	Who is signed in
-##	Change password
+## Who is signed in
 ```bat
-NET USER [username] [password]
+QUSER                          # List all users currently logged on, including RDP sessions
+QWINSTA                        # List sessions and their state
+```
+```powershell
+Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object UserName  # Currently logged-on user
+query user                                                                  # All sessions
 ```
 
-##	List users and groups
-##	Group Policy
+## Change password
+```bat
+NET USER {username} {newpassword}          # Set a local user's password
+NET USER {username} *                      # Prompt for new password interactively
+```
+```powershell
+$pw = ConvertTo-SecureString "NewPass123!" -AsPlainText -Force
+Set-LocalUser -Name {username} -Password $pw
+```
+
+## List users and groups
+```bat
+NET USER                              # List all local user accounts
+NET USER {username}                   # Details for a specific user
+NET LOCALGROUP                        # List all local groups
+NET LOCALGROUP Administrators         # List members of the Administrators group
+```
+```powershell
+Get-LocalUser                         # List local users
+Get-LocalUser | Where-Object { $_.Enabled -eq $true }  # Enabled users only
+Get-LocalGroup                        # List local groups
+Get-LocalGroupMember Administrators   # Members of a specific group
+Add-LocalGroupMember -Group Administrators -Member {username}  # Add user to group
+Remove-LocalGroupMember -Group Administrators -Member {username}
+```
+
+## Group Policy
+```bat
+GPUPDATE /FORCE              # Force a Group Policy refresh immediately
+GPRESULT /R                  # Show applied GPOs for the current user and computer
+GPRESULT /H C:\gpreport.html # Export a detailed HTML report
+```
+```powershell
+Invoke-GPUpdate -Force                  # Force GP refresh (requires RSAT)
+Get-GPResultantSetOfPolicy -ReportType Html -Path C:\gpreport.html
+```
 
 # References
 - https://superuser.com/questions/217504/is-there-a-list-of-windows-special-directories-shortcuts-like-temp
+- https://ss64.com/nt/ — CMD/DOS command reference
+- https://ss64.com/ps/ — PowerShell command reference
+- https://learn.microsoft.com/en-us/powershell/scripting/overview — Official PowerShell docs
