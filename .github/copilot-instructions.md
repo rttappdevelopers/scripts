@@ -34,8 +34,8 @@ Scripts in `_Customer/` are **confidential** and contain customer-specific confi
 - Never suggest moving files from `_Customer/` into tracked folders.
 - If asked to work on a `_Customer/` script, work on it locally only — do not include its contents in any commit, PR, or public artifact.
 
-### Technician-Run Scripts (M365 / Office 365)
-Scripts in `Office 365/` are run interactively from a **technician's workstation**, not via RMM. These:
+### Technician-Run Scripts (Microsoft 365)
+Scripts in `Microsoft 365/` are run interactively from a **technician's workstation**, not via RMM. These:
 - May use interactive authentication flows (e.g., `Connect-ExchangeOnline`, `Connect-MgGraph`)
 - Should still detect and auto-install required modules before use
 - Should not require pre-configuration beyond what can be prompted at runtime
@@ -137,6 +137,112 @@ Use a consistent `Write-Log` or `Write-SilentLog` function pattern with timestam
 
 ---
 
+## Script Naming Convention (Design Schema)
+
+All scripts in this repository follow the **`Action Product.ext`** naming pattern. This is the standard design schema for filenames and must be used when creating or renaming scripts.
+
+### Format
+```
+<Verb> <Target or Product>[.ext]
+```
+
+- **Verb** — A single action word describing what the script does.
+- **Target / Product** — The thing being acted upon (application name, OS component, service, etc.).
+- **Extension** — `.ps1`, `.sh`, `.py`, `.bat`, `.vbs`, etc.
+
+### Approved Verbs
+
+Use one of these standard verbs as the first word in every script filename:
+
+| Verb | When to use |
+|---|---|
+| `Install` | Deploys or installs software, agents, hotfixes, or packages |
+| `Uninstall` | Removes or uninstalls software |
+| `Configure` | Sets configuration, registry keys, policies, or preferences |
+| `Get` | Retrieves, queries, or reports information (read-only) |
+| `Set` | Assigns a specific value (license key, username, drive mapping, etc.) |
+| `Enable` | Turns on a feature, service, or setting |
+| `Disable` | Turns off a feature, service, or setting |
+| `Repair` | Fixes, restores, or recovers a broken component |
+| `Cleanup` | Removes caches, temp files, old versions, or stale data |
+| `Migrate` | Moves data, profiles, or configurations between systems/platforms |
+| `Audit` | Inspects, inventories, or assesses for compliance/reporting |
+| `Detect` | Checks for the presence of a condition (CVE, enrollment, malware) |
+| `Mitigate` | Applies a workaround or fix for a specific vulnerability (CVE) |
+| `Remove` | Deletes specific items (bloatware, UWP apps, OEM software) |
+| `Create` | Creates new objects (users, shortcuts, contacts) |
+| `Promote` | Elevates privileges or roles (user to admin) |
+| `Rebuild` | Reconstructs a database, index, or repository from scratch |
+| `Run` | Executes an external tool, wizard, or ad hoc command |
+| `Scan` | Performs a scan operation (repair scan, network scan) |
+| `Schedule` | Schedules a future operation (chkdsk at reboot) |
+| `Sync` | Synchronizes data or time with an external source |
+| `Download` | Downloads files or reports from a remote source |
+| `Import` | Imports data from a file or external source |
+| `Generate` | Produces output (keys, reports, tokens) |
+| `Enroll` | Enrolls a device into a management platform (Intune, MDM) |
+| `Start` | Begins a multi-step process (migration, enrollment) |
+| `PreStage` | Prepares an environment for a future operation |
+| `Delete` | Permanently removes a specific object (user profile, file) |
+| `Fix` | Applies a targeted correction to data (encoding, formatting) |
+| `Add` | Adds items to an existing collection (users to a group/list) |
+
+### Capitalization
+- **Title Case** for every word: `Install BitDefender GravityZone.ps1`
+- Product names use their **official casing**: `FortiClient`, `BitLocker`, `NinjaRMM`, `QuickBooks`
+- Acronyms stay uppercase: `SMB`, `NTP`, `CVE`, `MSI`, `UWP`, `RMM`, `GPO`
+
+### Examples
+```
+Install ConnectSecure Agent.ps1       ✅  Verb + Product
+Get Mailbox Usage.ps1                 ✅  Verb + Target
+Cleanup Windows Update Cache.ps1      ✅  Verb + Component
+Mitigate CVE-2022-30190 Follina.ps1   ✅  Verb + CVE identifier
+Audit User Profiles.ps1               ✅  Verb + Target
+Configure Chrome Updates.bat          ✅  Verb + Product
+```
+
+### Anti-Patterns (do not use)
+```
+App - SomeApp Install.ps1             ❌  Category prefix
+NinjaRMM_Removal_and_ReInstall.ps1    ❌  Underscores, multiple verbs
+WS_SomeScript.ps1                     ❌  Customer initials prefix
+FilesByType_results.ps1               ❌  No verb, underscores
+```
+
+---
+
+## Repository Folder Structure
+
+| Folder | Purpose |
+|---|---|
+| `Windows/Applications/` | Install, uninstall, configure, and repair Windows applications |
+| `Windows/CVE Mitigations/` | Vulnerability detection and mitigation scripts |
+| `Windows/OS/Maintenance/` | DISM, disk cleanup, cache cleanup, WMI rebuild, hotfixes, GPO cleanup, licensing |
+| `Windows/OS/Migration/` | Entra ID prestage, Intune enrollment, profile migration |
+| `Windows/OS/Networking/` | Mapped drives, WakeOnLAN, network name, NTP sync, offline files |
+| `Windows/OS/Reporting/` | License info, printers, shares, SMART status, folder sizes, service accounts |
+| `Windows/OS/Security/` | BitLocker, UAC, SMB, credential caching, admin audits, execution policy |
+| `Windows/OS/User Management/` | Profile audit/cleanup/delete, user creation, admin promotion, passwords |
+| `Microsoft 365/Exchange Online/` | Message trace, mailbox rules, contacts, distribution lists, AppRiver |
+| `Microsoft 365/Security and Compliance/` | Phishing simulation setup, MFA reports |
+| `Microsoft 365/Entra ID/` | Immutable ID, user identity management |
+| `Microsoft 365/Reporting/` | Mailbox usage reports |
+| `Mac/Applications/` | BitDefender, Huntress, ConnectSecure, Webroot |
+| `Mac/OS/` | User management, updates, shortcuts, Apple IDs |
+| `Mac/Security/` | FileVault, admin audit, MDM detection, CVE mitigation |
+| `Linux/Agents/` | ConnectSecure, package installation |
+| `Linux/Tools/` | GeoIP, MX scanning, VPN scanning, ping, download utilities |
+| `RMM/` | RMM agent management (NinjaOne, Datto) |
+| `Datto/` | Datto-specific tools (SaaS Protection, Endpoint Backup) |
+| `IT Glue/` | IT Glue documentation platform utilities |
+| `GitHub/` | Repository maintenance scripts |
+| `Misc/` | Uncategorized utilities |
+| `Network/` | Network device documentation and tools |
+| `_Customer/` | Customer-specific scripts (**confidential, git-ignored**) |
+
+---
+
 ## Planning and Collaboration Rules
 
 - Answer questions directly before making code changes.
@@ -157,6 +263,7 @@ Use a consistent `Write-Log` or `Write-SilentLog` function pattern with timestam
 - **Always** support Ninja environment variable overrides alongside script parameters.
 - **Always** exit with explicit codes (`exit 0` / `exit 1`) in RMM scripts.
 - **Always** include a comment-based help block.
+- **Always** update the folder `README.md` script index when adding, removing, or renaming a script — the index must stay current with the actual files in the folder.
 - **Never** use `MSOnline`, `AzureAD`, or `Connect-MsolService` — these are EOL.
 - **Never** use `Get-WmiObject` for application detection — use registry lookups or `Get-CimInstance` instead.
 - **Never** use `Read-Host` or any interactive prompt in RMM scripts.
@@ -175,3 +282,4 @@ Use a consistent `Write-Log` or `Write-SilentLog` function pattern with timestam
 - Exit codes are explicit and meaningful.
 - Comment-based help is present and accurate.
 - If an existing script was modified, any EOL cmdlets encountered were replaced.
+- The folder `README.md` script index has been updated to reflect any added, removed, or renamed scripts.

@@ -1,0 +1,1 @@
+reg add HKCU\SOFTWARE\Microsoft\Office\16.0\Outlook\Options\Calendar  /v EnableMeetingCopy /t REG_DWORD /d 00000001 /f

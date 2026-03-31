@@ -1,0 +1,2 @@
+@ECHO OFF
+TYPE "%Filepath%"

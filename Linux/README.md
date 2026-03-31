@@ -1,4 +1,30 @@
-# About
+# Linux
+
+## Scripts
+
+Scripts are organized into subfolders by function. See [HOWTO.md](../HOWTO.md) for guidance on downloading and running scripts.
+
+### Agents
+
+| Script | Description |
+|---|---|
+| [Install ConnectSecure Agent.sh](Agents/Install%20ConnectSecure%20Agent.sh) | Installs the ConnectSecure (CyberCNS) vulnerability scanning agent on Linux |
+| [Install Package.sh](Agents/Install%20Package.sh) | Installs a specified package using the system package manager (apt/yum) |
+
+### Tools
+
+| Script | Description |
+|---|---|
+| [Download File List.sh](Tools/Download%20File%20List.sh) | Downloads a list of files from URLs specified in a text file |
+| [Get GeoIP Location.sh](Tools/Get%20GeoIP%20Location.sh) | Looks up the geographic location of one or more IP addresses |
+| [Ping IP Addresses.sh](Tools/Ping%20IP%20Addresses.sh) | Pings a list of IP addresses and reports reachability |
+| [Scan MX Records.py](Tools/Scan%20MX%20Records.py) | Resolves and reports MX records for a list of domains |
+| [Scan VPN Connections.sh](Tools/Scan%20VPN%20Connections.sh) | Checks active VPN tunnel status on the machine |
+
+---
+
+## Command Reference
+
 These are commands that one may find useful on Linux workstations and servers. While there are a variety of shells or command-line interpreters (CLI) available that offer their own flavor to available commands, and Linux distributions which may file commands and configuration files in different locations, these should generally work across all of them. For the purpose of this documentation, validation has been done against Ubuntu and CentOS using the Bash CLI.
 
 Any text after a # in an example is a remark or comment, which explains what the command does.
