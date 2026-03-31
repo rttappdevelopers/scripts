@@ -157,7 +157,11 @@ vi/vim {file} # Multimode text editor: starts in navigate mode
 
 **Symbolic Links**
 ```sh
------------------TBD-----------------
+ln -s /path/to/target linkname      # Create a symbolic (soft) link
+ln    /path/to/target linkname      # Create a hard link (same volume only)
+ls -l                               # Symlinks show as: linkname -> target
+readlink -f linkname                # Resolve the full target path
+unlink linkname                     # Remove a symlink (or rm linkname)
 ```
 
 **Loopback devices / images**
@@ -250,7 +254,26 @@ echo "more text" | tee -a output.txt  # Append to existing file
 ```
 ##      Services
 ```sh
------------------TBD-----------------
+# systemctl (systemd — used on Ubuntu 16+, CentOS 7+, Debian 8+, etc.)
+systemctl status {service}          # Show service status
+systemctl start {service}           # Start a service
+systemctl stop {service}            # Stop a service
+systemctl restart {service}         # Restart a service
+systemctl reload {service}          # Reload config without full restart
+systemctl enable {service}          # Enable service to start at boot
+systemctl disable {service}         # Disable service from starting at boot
+systemctl is-active {service}       # Returns 'active' or 'inactive'
+systemctl list-units --type=service # List all loaded service units
+systemctl list-units --type=service --state=failed  # Show failed services
+
+journalctl -u {service}             # View logs for a specific service
+journalctl -u {service} -f          # Follow (tail) a service's logs live
+journalctl -u {service} --since "1 hour ago"
+
+# Legacy (SysVinit / older distros)
+service {service} status
+service {service} start
+service {service} stop
 ```
 
 ## Process List
