@@ -206,6 +206,7 @@ Any text after a # in an example is a remark or comment, which explains what the
     - [Who is on the network, are they reachable?](#who-is-on-the-network-are-they-reachable)
     - [Remote Command Line](#remote-command-line)
     - [Get Files from the Internet](#get-files-from-the-internet)
+    - [Install Applications with winget](#install-applications-with-winget)
 - [User functions](#user-functions)
     - [Who am I](#who-am-i)
     - [Who is signed in](#who-is-signed-in)
@@ -587,6 +588,72 @@ Start-BitsTransfer -Source {URL} -Destination C:\Temp\      # BITS transfer (res
 ```
 ```bat
 curl -o C:\Temp\file.ext {URL}   # curl is available in Windows 10+ CMD
+```
+
+## Install Applications with winget
+winget is the Windows Package Manager, built into Windows 10 (1809+) and Windows 11. A quick alternative to Ninite for common app installs.
+
+**Install individual apps**
+
+> `--silent` suppresses the installer UI and progress. Remove it to see the normal installer window.  
+> `--accept-package-agreements` and `--accept-source-agreements` are required to skip license prompts — keep these even without `--silent`.
+
+```bat
+winget install --id Google.Chrome             --silent --accept-package-agreements --accept-source-agreements
+winget install --id Mozilla.Firefox           --silent --accept-package-agreements --accept-source-agreements
+winget install --id Zoom.Zoom                 --silent --accept-package-agreements --accept-source-agreements
+winget install --id SlackTechnologies.Slack   --silent --accept-package-agreements --accept-source-agreements
+winget install --id Dialpad.Dialpad           --silent --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.Teams          --silent --accept-package-agreements --accept-source-agreements --override "/quiet NOLAUNCH=1"
+winget install --id 7zip.7zip                 --silent --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.DotNet.DesktopRuntime.8 --silent --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.VCRedist.2015+.x64      --silent --accept-package-agreements --accept-source-agreements
+```
+
+**Install all of the above in one go**
+```powershell
+$apps = @(
+    "Google.Chrome",
+    "Mozilla.Firefox",
+    "Zoom.Zoom",
+    "SlackTechnologies.Slack",
+    "Dialpad.Dialpad",
+    "Microsoft.Teams",
+    "7zip.7zip",
+    "Microsoft.DotNet.DesktopRuntime.8",
+    "Microsoft.VCRedist.2015+.x64"
+)
+foreach ($app in $apps) {
+    $extra = if ($app -eq "Microsoft.Teams") { "--override '/quiet NOLAUNCH=1'" } else { "" }
+    winget install --id $app --silent --accept-package-agreements --accept-source-agreements $extra
+}
+```
+
+**Install all of the above as a one-liner**
+```powershell
+# With installer UI suppressed (silent)
+"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --silent --accept-package-agreements --accept-source-agreements }
+
+# With installer UI visible (interactive)
+"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --accept-package-agreements --accept-source-agreements }
+```
+
+**Engineer / sysadmin add-ons** (VS Code, Notepad++, Python 3)
+```powershell
+# Silent
+"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --silent --accept-package-agreements --accept-source-agreements }
+
+# Interactive
+"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --accept-package-agreements --accept-source-agreements }
+```
+
+**Other useful winget commands**
+```bat
+winget list                        # Show all installed apps winget knows about
+winget upgrade --all --silent      # Update every app winget can manage
+winget upgrade --id Google.Chrome  # Update a specific app
+winget uninstall --id Zoom.Zoom    # Uninstall an app
+winget search "zoom"               # Search for a package by name
 ```
 
 # User functions
