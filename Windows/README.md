@@ -595,19 +595,20 @@ winget is the Windows Package Manager, built into Windows 10 (1809+) and Windows
 
 **Install individual apps**
 
+> `--source winget` pins the install to the winget community repository — without it, winget may find the same package in the Microsoft Store and prompt you to choose.  
 > `--silent` suppresses the installer UI and progress. Remove it to see the normal installer window.  
 > `--accept-package-agreements` and `--accept-source-agreements` are required to skip license prompts — keep these even without `--silent`.
 
 ```bat
-winget install --id Google.Chrome             --silent --accept-package-agreements --accept-source-agreements
-winget install --id Mozilla.Firefox           --silent --accept-package-agreements --accept-source-agreements
-winget install --id Zoom.Zoom                 --silent --accept-package-agreements --accept-source-agreements
-winget install --id SlackTechnologies.Slack   --silent --accept-package-agreements --accept-source-agreements
-winget install --id Dialpad.Dialpad           --silent --accept-package-agreements --accept-source-agreements
-winget install --id Microsoft.Teams          --silent --accept-package-agreements --accept-source-agreements --override "/quiet NOLAUNCH=1"
-winget install --id 7zip.7zip                 --silent --accept-package-agreements --accept-source-agreements
-winget install --id Microsoft.DotNet.DesktopRuntime.8 --silent --accept-package-agreements --accept-source-agreements
-winget install --id Microsoft.VCRedist.2015+.x64      --silent --accept-package-agreements --accept-source-agreements
+winget install --id Google.Chrome             --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Mozilla.Firefox           --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Zoom.Zoom                 --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id SlackTechnologies.Slack   --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Dialpad.Dialpad           --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.Teams           --source winget --silent --accept-package-agreements --accept-source-agreements --override "/quiet NOLAUNCH=1"
+winget install --id 7zip.7zip                 --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.DotNet.DesktopRuntime.8 --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.VCRedist.2015+.x64      --source winget --silent --accept-package-agreements --accept-source-agreements
 ```
 
 **Install all of the above in one go**
@@ -625,26 +626,21 @@ $apps = @(
 )
 foreach ($app in $apps) {
     $extra = if ($app -eq "Microsoft.Teams") { "--override '/quiet NOLAUNCH=1'" } else { "" }
-    winget install --id $app --silent --accept-package-agreements --accept-source-agreements $extra
+    winget install --id $app --source winget --silent --accept-package-agreements --accept-source-agreements $extra
 }
 ```
 
 **Install all of the above as a one-liner**
-```powershell
-# With installer UI suppressed (silent)
-"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --silent --accept-package-agreements --accept-source-agreements }
 
-# With installer UI visible (interactive)
-"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --accept-package-agreements --accept-source-agreements }
+> Remove `--silent` to see the installer UI and monitor progress.
+
+```powershell
+"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --source winget --silent --accept-package-agreements --accept-source-agreements }
 ```
 
 **Engineer / sysadmin add-ons** (VS Code, Notepad++, Python 3)
 ```powershell
-# Silent
-"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --silent --accept-package-agreements --accept-source-agreements }
-
-# Interactive
-"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --accept-package-agreements --accept-source-agreements }
+"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --source winget --silent --accept-package-agreements --accept-source-agreements }
 ```
 
 **Other useful winget commands**
