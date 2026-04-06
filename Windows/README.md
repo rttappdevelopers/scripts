@@ -685,6 +685,7 @@ NET USER                              # List all local user accounts
 NET USER {username}                   # Details for a specific user
 NET LOCALGROUP                        # List all local groups
 NET LOCALGROUP Administrators         # List members of the Administrators group
+NET LOCALGROUP Administrators "Username" /add   # Add a user to the Administrators group
 ```
 ```powershell
 Get-LocalUser                         # List local users
