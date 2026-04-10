@@ -11,6 +11,7 @@ A library of automation scripts used by Round Table Technology support technicia
 | [`Windows/`](Windows/README.md) | Applications, OS maintenance, security, user management, networking, reporting, and CVE mitigations for Windows endpoints — includes a [CMD & PowerShell command reference](Windows/README.md#command-reference) |
 | [`Mac/`](Mac/README.md) | Agent installs, OS configuration, and security tooling for macOS endpoints — includes a [macOS command reference](Mac/README.md#command-reference) |
 | [`Linux/`](Linux/README.md) | Agent installs and diagnostic tools for Linux endpoints — includes a [Bash command reference](Linux/README.md#command-reference) |
+| [`Google/`](Google/README.md) | Google Workspace auditing and management scripts using GAM7 |
 | [`Microsoft 365/`](Microsoft%20365/README.md) | Exchange Online, Entra ID, phishing simulation, and reporting scripts for M365 tenants |
 | [`RMM/`](RMM/README.md) | NinjaOne agent management and UDF configuration |
 | [`Datto/`](Datto/README.md) | Datto SaaS Protection and Endpoint Backup tooling |
