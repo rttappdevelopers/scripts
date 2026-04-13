@@ -1,9 +1,22 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Description: This script creates a transport rule in Exchange Online to bypass spam filtering for emails coming from AppRiver IP ranges.
+<#
+.SYNOPSIS
+    Creates an Exchange Online transport rule to quarantine inbound mail not from AppRiver.
+
+.DESCRIPTION
+    Connects to Exchange Online and creates a transport rule that quarantines
+    incoming external email unless it was delivered by AppRiver ETP (Email
+    Threat Protection). Optionally includes additional IP addresses such as
+    copier scan-to-email WAN IPs.
+
+.NOTES
+    Name:    Configure AppRiver Inbound Limit
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+    Ref:     https://support.zixcorp.com/app/answers/detail/a_id/2933/kw/inbound%20route%20limit
+#>
+
+param()
 
 # Ensure PowerShellGet is current enough to reliably install modules on older systems
 try {
@@ -11,8 +24,7 @@ try {
     if ($psGet.Version -lt [Version]'2.0') {
         Write-Host "Updating PowerShellGet before installing dependencies..."
         Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
-        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
-        exit 1
+        throw "PowerShellGet updated. Please restart PowerShell and re-run this script."
     }
 } catch {
     Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
@@ -24,8 +36,7 @@ if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
     try {
         Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
     } catch {
-        Write-Error "Failed to install ExchangeOnlineManagement: $($_.Exception.Message)"
-        exit 1
+        throw "Failed to install ExchangeOnlineManagement: $($_.Exception.Message)"
     }
 }
 
@@ -33,8 +44,7 @@ if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
 try {
     Import-Module ExchangeOnlineManagement -ErrorAction Stop
 } catch {
-    Write-Error "Failed to import ExchangeOnlineManagement: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to import ExchangeOnlineManagement: $($_.Exception.Message)"
 }
 
 # Connect to Exchange Online
