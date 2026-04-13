@@ -1,19 +1,27 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Download and Fix Message Trace Reports
-Set-ExecutionPolicy RemoteSigned
+<#
+.SYNOPSIS
+    Downloads and fixes encoding on Exchange Online historical message trace reports.
+
+.DESCRIPTION
+    Connects to Exchange Online, retrieves completed historical message trace
+    reports, and guides the technician through downloading and re-encoding them
+    with proper UTF-8 formatting and parsed recipient status columns.
+
+.NOTES
+    Name:    Download Message Trace Reports
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
 
 # Connect to Exchange Online
 Write-Output "Connecting to Exchange Online..."
-if (!(Get-InstalledModule -Name "ExchangeOnlineManagement" -ErrorAction SilentlyContinue)) {
-    Install-Module -Name ExchangeOnlineManagement -Force
-    Import-Module ExchangeOnlineManagement
-} else {
-    Import-Module ExchangeOnlineManagement
+if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
+    Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser -AllowClobber
 }
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
 
 # -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
 Connect-ExchangeOnline -DisableWAM
@@ -24,7 +32,7 @@ $reports = Get-HistoricalSearch | Where-Object { $_.Status -eq "Done" } | Sort-O
 
 if ($reports.Count -eq 0) {
     Write-Output "No completed message trace reports found."
-    exit
+    return
 }
 
 # Display available reports
@@ -49,8 +57,7 @@ if ($selection -eq "all") {
     if ($index -ge 0 -and $index -lt $reports.Count) {
         $reportsToDownload = @($reports[$index])
     } else {
-        Write-Error "Invalid selection."
-        exit
+        throw "Invalid selection."
     }
 }
 
