@@ -1,11 +1,22 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Get list view and CSV file of active users and their MFA status
-# File export goes to "c:\temp\MFAUsers.csv"
-# Note: MSOnline (MSOL) is end-of-life. This script uses Microsoft Graph instead.
+<#
+.SYNOPSIS
+    Generates an MFA status report for all licensed Microsoft 365 users.
+
+.DESCRIPTION
+    Connects to Microsoft Graph and retrieves authentication methods for each
+    user, producing a CSV report at C:\temp\MFAUsers.csv showing MFA state,
+    default method, phone number, primary SMTP, and aliases.
+
+.NOTES
+    Name:    Get MFA Status Report
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
+
+$ErrorActionPreference = 'Stop'
 
 # Ensure PowerShellGet is current enough to reliably install modules on older systems
 try {
@@ -13,37 +24,31 @@ try {
     if ($psGet.Version -lt [Version]'2.0') {
         Write-Host "Updating PowerShellGet before installing dependencies..."
         Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
-        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
-        exit 1
+        throw "PowerShellGet updated. Please restart PowerShell and re-run this script."
     }
 } catch {
     Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
 }
 
-# Install and import the Microsoft.Graph module if not already present
-if (-not (Get-Module -ListAvailable -Name Microsoft.Graph)) {
-    Write-Host "Installing Microsoft.Graph module..."
-    try {
-        Install-Module -Name Microsoft.Graph -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
-    } catch {
-        Write-Error "Failed to install Microsoft.Graph: $($_.Exception.Message)"
-        exit 1
+# Install and import the required Microsoft.Graph submodules
+foreach ($mod in @('Microsoft.Graph.Authentication', 'Microsoft.Graph.Users', 'Microsoft.Graph.Identity.SignIns')) {
+    if (-not (Get-Module -ListAvailable -Name $mod)) {
+        Write-Host "Installing $mod..."
+        Install-Module -Name $mod -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
     }
 }
 try {
     Import-Module Microsoft.Graph.Users, Microsoft.Graph.Identity.SignIns -ErrorAction Stop
 } catch {
-    Write-Error "Failed to import Microsoft.Graph modules: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to import Microsoft.Graph modules: $($_.Exception.Message)"
 }
 
 # Connect to Microsoft Graph
 Write-Host "Connecting to Microsoft Graph..."
 try {
-    Connect-MgGraph -Scopes "User.Read.All", "UserAuthenticationMethod.Read.All", "AuditLog.Read.All" -NoWelcome -UseDeviceAuthentication -ErrorAction Stop
+    Connect-MgGraph -Scopes 'User.Read.All', 'UserAuthenticationMethod.Read.All', 'AuditLog.Read.All' -NoWelcome
 } catch {
-    Write-Error "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
 }
 
 # Ensure output directory exists
