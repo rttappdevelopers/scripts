@@ -1,10 +1,21 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Add Defendify Phishing Simulation allowances to a customer's Office 365 tenant
-## Reference: https://app.defendify.com/module/phishing-simulations/whitelisting
+<#
+.SYNOPSIS
+    Configures Defendify phishing simulation allowances in an Office 365 tenant.
+
+.DESCRIPTION
+    Connects to Exchange Online and Security & Compliance Center to configure
+    phishing simulation overrides, anti-spam allowlists, and Safe Links bypass
+    rules for Defendify phishing simulation campaigns.
+
+.NOTES
+    Name:    Configure Defendify Phishing Simulation
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+    Ref:     https://app.defendify.com/module/phishing-simulations/whitelisting
+#>
+
+param()
 
 # Settings
 ## Replace these variables as needed
@@ -35,19 +46,12 @@ $PhishingIPs = @(
     "207.246.122.254"
 )
 
-# Check for module ExchangeOnlineManagement and get current version if present, install if not present, upgrade if newer version than current is available
-if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) {
+# Check for module ExchangeOnlineManagement and install if not present
+if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
     Write-Output "Installing Exchange Online Management PowerShell module.`n"
-    Install-Module -Name ExchangeOnlineManagement -Force
-} else {
-    $CurrentVersion = (Get-Module -Name ExchangeOnlineManagement).Version
-    $NewVersion = (Find-Module -Name ExchangeOnlineManagement).Version
-    if ($NewVersion -gt $CurrentVersion) {
-        Write-Output "Updating Exchange Online Management PowerShell module from $CurrentVersion to $NewVersion.`n"
-        Update-Module -Name ExchangeOnlineManagement -Force
-    }
+    Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser -AllowClobber
 }
-Import-Module ExchangeOnlineManagement
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
 # -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
