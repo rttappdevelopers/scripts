@@ -91,9 +91,7 @@ Write-Host "Transcript: $TranscriptFile" -ForegroundColor DarkGray
 
 # -- Verify GAM is installed and configured ------------------------------------
 if (-not (Get-Command gam -ErrorAction SilentlyContinue)) {
-    Write-Host "GAM7 is not installed or not on PATH." -ForegroundColor Red
-    Write-Host "Run '.\Initialize GAM.ps1' first to set up GAM for this workspace." -ForegroundColor Red
-    exit 1
+    throw "GAM7 is not installed or not on PATH. Run '.\Initialize GAM.ps1' first to set up GAM for this workspace."
 }
 
 # -- Select customer workspace ------------------------------------------------
@@ -110,9 +108,7 @@ if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) {
     }
 
     if ($existingWorkspaces.Count -eq 0) {
-        Write-Host "No initialized customer workspaces found under: $ConfigBaseDir" -ForegroundColor Red
-        Write-Host "Run '.\Initialize GAM.ps1' first to set up a workspace." -ForegroundColor Red
-        exit 1
+        throw "No initialized customer workspaces found under: $ConfigBaseDir. Run '.\Initialize GAM.ps1' first to set up a workspace."
     } else {
         Write-Host ""
         Write-Host "Available customer workspaces:" -ForegroundColor Cyan
@@ -127,8 +123,7 @@ if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) {
             $env:GAMCFGDIR = $ConfigDir
             Write-Host "Selected: $($existingWorkspaces[$selInt - 1])" -ForegroundColor Green
         } else {
-            Write-Error "Invalid selection."
-            exit 1
+            throw "Invalid selection."
         }
     }
 }
@@ -146,8 +141,7 @@ if ([string]::IsNullOrWhiteSpace($Domain) -and $ConfigDir) {
 if ([string]::IsNullOrWhiteSpace($UserEmail)) {
     $UserEmail = Read-Host "Enter the Google Workspace admin email (e.g., admin@yourdomain.com)"
     if ([string]::IsNullOrWhiteSpace($UserEmail)) {
-        Write-Error "User email is required."
-        exit 1
+        throw "User email is required."
     }
 }
 
@@ -160,8 +154,7 @@ if ([string]::IsNullOrWhiteSpace($Domain)) {
     } else {
         $Domain = Read-Host "Enter your Google Workspace primary domain (e.g., yourdomain.com)"
         if ([string]::IsNullOrWhiteSpace($Domain)) {
-            Write-Error "Domain is required."
-            exit 1
+            throw "Domain is required."
         }
     }
 }
@@ -177,28 +170,24 @@ if ([string]::IsNullOrWhiteSpace($FolderName) -and [string]::IsNullOrWhiteSpace(
         '1' {
             $FolderName = Read-Host "Enter the folder name"
             if ([string]::IsNullOrWhiteSpace($FolderName)) {
-                Write-Error "Folder name is required."
-                exit 1
+                throw "Folder name is required."
             }
         }
         '2' {
             $FolderId = Read-Host "Enter the folder ID"
             if ([string]::IsNullOrWhiteSpace($FolderId)) {
-                Write-Error "Folder ID is required."
-                exit 1
+                throw "Folder ID is required."
             }
         }
         '3' {
             $FolderId = Read-Host "Enter the Shared Drive ID"
             if ([string]::IsNullOrWhiteSpace($FolderId)) {
-                Write-Error "Shared Drive ID is required."
-                exit 1
+                throw "Shared Drive ID is required."
             }
             $IncludeSharedDrive = $true
         }
         default {
-            Write-Error "Invalid selection. Please enter 1, 2, or 3."
-            exit 1
+            throw "Invalid selection. Please enter 1, 2, or 3."
         }
     }
 }
@@ -429,4 +418,3 @@ Write-Host "Log saved to: $TranscriptFile" -ForegroundColor DarkGray
 $env:GAMCFGDIR = $originalGamCfgDir
 
 Stop-Transcript
-exit 0
