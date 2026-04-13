@@ -1,9 +1,19 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Description: This script adds users to a distribution list in Exchange Online from a CSV file containing email addresses.
+<#
+.SYNOPSIS
+    Adds users to an Exchange Online distribution list from a CSV file.
+
+.DESCRIPTION
+    Connects to Exchange Online and adds email addresses from a CSV file
+    (containing an Email column) to the specified distribution group.
+
+.NOTES
+    Name:    Add Users to Distribution List
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
 
 # Install Exchange Online module if not already installed
 if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
@@ -23,8 +33,7 @@ $csvPath = $csvPath -replace '^"|"$', ''
 
 # Validate file exists
 if (-not (Test-Path $csvPath)) {
-    Write-Error "CSV file not found at $csvPath"
-    exit
+    throw "CSV file not found at $csvPath"
 }
 
 # Get the distribution list
@@ -36,8 +45,7 @@ try {
     Write-Host "Found distribution list: $($dlObject.DisplayName)" -ForegroundColor Green
 }
 catch {
-    Write-Error "Distribution list not found: $distributionList"
-    exit
+    throw "Distribution list not found: $distributionList"
 }
 
 # Import CSV data
