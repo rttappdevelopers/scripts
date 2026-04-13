@@ -1,339 +1,176 @@
 #Requires -Version 7
 <#
 .SYNOPSIS
-    Generates a comprehensive report of Microsoft 365 users, including their assigned licenses,
-    last sign-in activity, security status, and organizational information.
+    Generates a merged Microsoft 365 user activity report covering licenses,
+    sign-in activity, mailbox usage, OneDrive storage, and MFA status.
 
 .DESCRIPTION
-    This script connects to Microsoft Graph API to gather
-    comprehensive information about Microsoft 365 users in your tenant.
-    It retrieves:
-    - UserPrincipalName (UPN)
-    - Display Name
-    - Account Status (Enabled/Disabled)
-    - User Type (Member/Guest)
-    - Account Creation Date
-    - Last Password Change
-    - Assigned Licenses (friendly names)
-    - Last Sign-in Date/Time
-    - MFA Status
-    - Group Membership Count
-    - Admin Role Status
-    - Mailbox Size and Item Count
-    - OneDrive Used Storage
+    Connects to Microsoft Graph and pulls four pre-built tenant-level reports,
+    then joins them by UserPrincipalName into a single CSV. Uses only the
+    Microsoft.Graph.Authentication module and Invoke-MgGraphRequest (REST),
+    avoiding the heavy autorest-based Graph SDK submodules entirely.
+
+    Reports consumed:
+      - getOffice365ActiveUserDetail  (licenses, last activity dates)
+      - getMailboxUsageDetail         (mailbox size, item count)
+      - getOneDriveUsageAccountDetail (OneDrive storage)
+      - userRegistrationDetails       (MFA registration status)
+
+    Report data may be up to 48 hours behind real-time. The report freshness
+    date is included in the output.
+
+.PARAMETER OutputPath
+    Path for the merged CSV report. Defaults to M365_User_Report.csv in the
+    script directory.
+
+.PARAMETER ReportPeriod
+    Graph reporting period. Valid values: D7, D30, D90, D180. Default: D180.
+
+.EXAMPLE
+    .\Get Mailbox Usage.ps1
+    Generates the default report in the script directory.
+
+.EXAMPLE
+    .\Get Mailbox Usage.ps1 -OutputPath "C:\Reports\Contoso.csv" -ReportPeriod D30
+    Generates a 30-day report at the specified path.
 
 .NOTES
-    Author: Brad Brown, with the help of GitHub Copilot
-    Date: 2025-06-27
-    Version: 2.0 - Switched to Microsoft Graph PowerShell SDK
-
-.PREREQUISITES
-    - PowerShell 5.1 or newer (PowerShell 7.x recommended)
-    - Microsoft.Graph PowerShell module
-
-    You can install this module using:
-    Install-Module -Name Microsoft.Graph -Scope CurrentUser
+    Name:    Get Mailbox Usage
+    Author:  Brad Brown, with the help of GitHub Copilot
+    Date:    2025-06-27
+    Version: 3.0 - Rewritten to use bulk Graph report APIs
 
 .PERMISSIONS
-    To run this script, the authenticated user (or app registration) requires
-    the following Microsoft Graph API permissions:
-    - User.Read.All
-    - Directory.Read.All
-    - AuditLog.Read.All
-    - UserAuthenticationMethod.Read.All
-    - GroupMember.Read.All
-    - RoleManagement.Read.Directory
-    - Mail.Read
-    - Files.Read.All
+    - Reports.Read.All   (delegated)
+    - AuditLog.Read.All  (delegated)
+    The signed-in user must hold at least the Reports Reader role.
 #>
 
 param(
-    [string]$OutputPath = "$PSScriptRoot\M365_User_Report.csv"
+    [string]$OutputPath   = "$PSScriptRoot\M365_User_Report.csv",
+    [ValidateSet('D7','D30','D90','D180')]
+    [string]$ReportPeriod = 'D180'
 )
 
-# Module Installation Check and Import
-function Install-AndImportModule {
-    param(
-        [string]$ModuleName
-    )
-    if (-not (Get-Module -ListAvailable -Name $ModuleName)) {
-        Write-Host "Module '$ModuleName' not found. Attempting to install..." -ForegroundColor Yellow
-        try {
-            Install-Module -Name $ModuleName -Scope CurrentUser -Force -AllowClobber
-            Write-Host "Module '$ModuleName' installed successfully." -ForegroundColor Green
-            Import-Module -Name $ModuleName -Force | Out-Null
-            Write-Host "Module '$ModuleName' imported." -ForegroundColor Green
-        }
-        catch {
-            Write-Error "Failed to install and import module '$ModuleName'. Please install it manually: Install-Module -Name $ModuleName -Scope CurrentUser -Force"
-            exit 1
-        }
-    } else {
-        Write-Host "Module '$ModuleName' found. Importing..." -ForegroundColor Green
-        try {
-            Import-Module -Name $ModuleName -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        catch {
-            Write-Warning "Failed to force import module '$ModuleName'. There might be existing conflicts. Error: $($_.Exception.Message)"
-        }
-        Write-Host "Module '$ModuleName' imported (or attempted)." -ForegroundColor Green
-    }
+$ErrorActionPreference = 'Stop'
+
+# --- Module check ---
+if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) {
+    Write-Host "Installing Microsoft.Graph.Authentication..." -ForegroundColor Yellow
+    Install-Module -Name Microsoft.Graph.Authentication -Scope CurrentUser -Force -AllowClobber
 }
+Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+Write-Host "Microsoft.Graph.Authentication loaded." -ForegroundColor Green
 
-# Ensure PowerShellGet is current enough to reliably install modules on older systems
-try {
-    $psGet = Get-Module -ListAvailable -Name PowerShellGet | Sort-Object Version -Descending | Select-Object -First 1
-    if ($psGet.Version -lt [Version]'2.0') {
-        Write-Host "Updating PowerShellGet before installing dependencies..."
-        Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
-        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
-        exit 1
-    }
-} catch {
-    Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
-}
-
-Install-AndImportModule -ModuleName Microsoft.Graph
-Install-AndImportModule -ModuleName ExchangeOnlineManagement
-
+# --- Connect ---
 Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Cyan
-
-# Define required Graph scopes (expanded for additional features)
-$graphScopes = @(
-    "User.Read.All",
-    "Directory.Read.All",
-    "AuditLog.Read.All",
-    "UserAuthenticationMethod.Read.All",
-    "GroupMember.Read.All",
-    "RoleManagement.Read.Directory",
-    "Mail.Read",
-    "Files.Read.All"
-)
-
 try {
-    Connect-MgGraph -Scopes $graphScopes -NoWelcome -UseDeviceAuthentication
-    Write-Host "Successfully connected to Microsoft Graph." -ForegroundColor Green
+    Connect-MgGraph -Scopes 'Reports.Read.All', 'AuditLog.Read.All' -NoWelcome
+    Write-Host "Connected to Microsoft Graph." -ForegroundColor Green
 }
 catch {
-    Write-Error "Failed to connect to Microsoft Graph. Please ensure you have the necessary permissions and try again. Error: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
 }
 
-Write-Host "Connecting to Exchange Online..." -ForegroundColor Cyan
-try {
-    Connect-ExchangeOnline -ShowBanner:$false -Device
-    Write-Host "Successfully connected to Exchange Online." -ForegroundColor Green
-}
-catch {
-    Write-Error "Failed to connect to Exchange Online. Error: $($_.Exception.Message)"
-    Disconnect-MgGraph
-    exit 1
-}
-
-Write-Host "Retrieving Microsoft 365 license SKUs for friendly names..." -ForegroundColor Cyan
-$licenseSKUs = @{}
-try {
-    Get-MgSubscribedSku | ForEach-Object {
-        $licenseSKUs[$_.SkuId] = $_.SkuPartNumber
-    }
-    Write-Host "Successfully retrieved license SKUs." -ForegroundColor Green
-}
-catch {
-    Write-Warning "Could not retrieve license SKUs. License display might show GUIDs. Error: $($_.Exception.Message)"
-}
-
-# Get all Microsoft 365 Users with expanded properties
-Write-Host "Retrieving all Microsoft 365 users..." -ForegroundColor Cyan
-$users = @()
-try {
-    $users = Get-MgUser -All -Property @(
-        "Id", "DisplayName", "UserPrincipalName", "AssignedLicenses", "Mail", "SignInActivity",
-        "AccountEnabled", "UserType", "CreatedDateTime", "LastPasswordChangeDateTime"
-    ) | Where-Object { $_.UserPrincipalName -ne $null }
-    Write-Host "Found $($users.Count) users." -ForegroundColor Green
-}
-catch {
-    Write-Error "Failed to retrieve Microsoft 365 users from Graph. Error: $($_.Exception.Message)"
-    exit 1
-}
-
-# Process User Data
-Write-Host "Processing user data (licenses, last login, security status, etc.)..." -ForegroundColor Cyan
-$reportData = @()
-$progress = 0
-$totalUsers = $users.Count
-
-foreach ($user in $users) {
-    $progress++
-    Write-Progress -Activity "Gathering User Data" -Status "Processing user $($user.UserPrincipalName) ($progress of $totalUsers)" -PercentComplete (($progress / $totalUsers) * 100)
-
-    $userPrincipalName = $user.UserPrincipalName
-    $displayName = $user.DisplayName
-    $userId = $user.Id
-
-    # Basic Account Information
-    $accountEnabled = $user.AccountEnabled
-    $userType = $user.UserType ?? "Member"
-    $createdDate = if ($user.CreatedDateTime) { $user.CreatedDateTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") } else { "N/A" }
-    $lastPasswordChange = if ($user.LastPasswordChangeDateTime) { $user.LastPasswordChangeDateTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") } else { "N/A" }
-
-    # region Licenses
-    $assignedLicenses = @()
-    if ($user.AssignedLicenses -and $user.AssignedLicenses.Count -gt 0) {
-        foreach ($license in $user.AssignedLicenses) {
-            if ($licenseSKUs.ContainsKey($license.SkuId)) {
-                $assignedLicenses += $licenseSKUs[$license.SkuId]
-            } else {
-                $assignedLicenses += $license.SkuId
-            }
-        }
-    }
-    $licensesString = if ($assignedLicenses.Count -gt 0) { $assignedLicenses -join "; " } else { "None" }
-    
-    # Last Login
-    $lastSignIn = "N/A"
+# --- Helper: download a Graph report CSV and return parsed objects ---
+function Get-GraphReportCsv {
+    param([string]$Uri)
+    $tempFile = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.csv'
     try {
-        if ($null -ne $user.SignInActivity -and $null -ne $user.SignInActivity.LastSignInDateTime) {
-            $lastSignIn = $user.SignInActivity.LastSignInDateTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
-        }
+        Invoke-MgGraphRequest -Method GET -Uri $Uri -OutputFilePath $tempFile
+        Import-Csv $tempFile
     }
-    catch {
-        Write-Warning "Could not retrieve LastSignInDateTime for $($user.UserPrincipalName). Error: $($_.Exception.Message)"
-    }
-
-    # MFA Status
-    $mfaStatus = "Unable to determine"
-    try {
-        $authMethods = Get-MgUserAuthenticationMethod -UserId $userId -ErrorAction SilentlyContinue
-        if ($authMethods) {
-            $strongMethods = $authMethods | Where-Object { 
-                $_.AdditionalProperties.'@odata.type' -in @(
-                    '#microsoft.graph.microsoftAuthenticatorAuthenticationMethod',
-                    '#microsoft.graph.phoneAuthenticationMethod',
-                    '#microsoft.graph.fido2AuthenticationMethod'
-                )
-            }
-            $mfaStatus = if ($strongMethods.Count -gt 0) { "Enabled" } else { "Disabled" }
-        }
-    }
-    catch {
-        $mfaStatus = "Unable to determine"
-    }
-
-    # Group Memberships Count
-    $groupCount = "N/A"
-    try {
-        $userGroups = Get-MgUserMemberOf -UserId $userId -ErrorAction SilentlyContinue
-        $groupCount = if ($userGroups) { $userGroups.Count } else { 0 }
-    }
-    catch {
-        $groupCount = "Unable to determine"
-    }
-
-    # Admin Roles
-    $hasAdminRoles = "No"
-    try {
-        $adminRoles = Get-MgUserDirectoryRole -UserId $userId -ErrorAction SilentlyContinue
-        $hasAdminRoles = if ($adminRoles -and $adminRoles.Count -gt 0) { "Yes ($($adminRoles.Count) roles)" } else { "No" }
-    }
-    catch {
-        $hasAdminRoles = "Unable to determine"
-    }
-
-    # Email Storage Information
-    $emailSize = "N/A"
-    $emailItemCount = "N/A"
-    try {
-        $mailboxStats = Get-EXOMailboxStatistics -Identity $userId -ErrorAction SilentlyContinue
-        if ($mailboxStats) {
-            if ($mailboxStats.TotalItemSize) {
-                # Parse size string (format: "XX.XX GB (X,XXX,XXX bytes)")
-                $sizeString = $mailboxStats.TotalItemSize.ToString()
-                if ($sizeString -match '([\d.]+)\s+(MB|GB)') {
-                    $sizeValue = [double]$matches[1]
-                    $sizeUnit = $matches[2]
-                    if ($sizeUnit -eq "MB") {
-                        $emailSize = [math]::Round($sizeValue / 1024, 2).ToString() + " GB"
-                    } else {
-                        $emailSize = [math]::Round($sizeValue, 2).ToString() + " GB"
-                    }
-                }
-            }
-            $emailItemCount = if ($mailboxStats.ItemCount) { $mailboxStats.ItemCount } else { 0 }
-        }
-    }
-    catch {
-        # Silently continue if mailbox access fails
-    }
-
-    # OneDrive Storage
-    $oneDriveUsed = "N/A"
-    try {
-        $oneDrive = Get-MgUserDrive -UserId $userId -ErrorAction SilentlyContinue
-        if ($oneDrive -and $oneDrive.Quota) {
-            $usedBytes = $oneDrive.Quota.Used
-            if ($usedBytes -and $usedBytes -gt 0) {
-                $oneDriveUsed = [math]::Round($usedBytes / 1GB, 2).ToString() + " GB"
-            } else {
-                $oneDriveUsed = "0 GB"
-            }
-        }
-    }
-    catch {
-        $oneDriveUsed = "Unable to determine"
-    }
-    
-    # Add data to the report
-    $reportData += [PSCustomObject]@{
-        UserPrincipalName     = $userPrincipalName
-        DisplayName           = $displayName
-        AccountEnabled        = $accountEnabled
-        UserType              = $userType
-        CreatedDate           = $createdDate
-        LastPasswordChange    = $lastPasswordChange
-        AssignedLicenses      = $licensesString
-        LastSignInUTC         = $lastSignIn
-        MFAStatus             = $mfaStatus
-        GroupMemberships      = $groupCount
-        HasAdminRoles         = $hasAdminRoles
-        EmailMailboxSizeGB    = $emailSize
-        EmailItemCount        = $emailItemCount
-        OneDriveUsedGB        = $oneDriveUsed
+    finally {
+        if (Test-Path $tempFile) { Remove-Item $tempFile -Force }
     }
 }
 
-# Export Report
-Write-Host "Exporting report to $($OutputPath)..." -ForegroundColor Cyan
-try {
-    $reportData | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding UTF8
-    Write-Host "Report successfully exported to '$OutputPath'." -ForegroundColor Green
-    Write-Host "Report contains $($reportData.Count) user records with the following columns:" -ForegroundColor Green
-    Write-Host "- UserPrincipalName, DisplayName, AccountEnabled, UserType" -ForegroundColor Gray
-    Write-Host "- CreatedDate, LastPasswordChange, AssignedLicenses, LastSignInUTC" -ForegroundColor Gray
-    Write-Host "- MFAStatus, GroupMemberships, HasAdminRoles" -ForegroundColor Gray
-    Write-Host "- EmailMailboxSizeGB, EmailItemCount, OneDriveUsedGB" -ForegroundColor Gray
-}
-catch {
-    Write-Error "Failed to export report to '$OutputPath'. Error: $($_.Exception.Message)"
+# --- Helper: page through a Graph JSON collection ---
+function Get-GraphJsonAll {
+    param([string]$Uri)
+    $results = [System.Collections.Generic.List[object]]::new()
+    $nextLink = $Uri
+    while ($nextLink) {
+        $response = Invoke-MgGraphRequest -Method GET -Uri $nextLink
+        if ($response.value) { $results.AddRange($response.value) }
+        $nextLink = $response.'@odata.nextLink'
+    }
+    $results
 }
 
-# Disconnect
-Write-Host "Disconnecting from Microsoft Graph..." -ForegroundColor Cyan
-try {
-    Disconnect-MgGraph
-    Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
-}
-catch {
-    Write-Warning "Failed to disconnect from Microsoft Graph cleanly."
-}
+# --- Pull reports ---
+Write-Host "Downloading Office 365 Active User Detail..." -ForegroundColor Cyan
+$activeUsers = Get-GraphReportCsv -Uri "/v1.0/reports/getOffice365ActiveUserDetail(period='$ReportPeriod')"
+Write-Host "  $($activeUsers.Count) records." -ForegroundColor Gray
 
-Write-Host "Disconnecting from Exchange Online..." -ForegroundColor Cyan
-try {
-    Disconnect-ExchangeOnline -Confirm:$false
-    Write-Host "Disconnected from Exchange Online." -ForegroundColor Green
-}
-catch {
-    Write-Warning "Failed to disconnect from Exchange Online cleanly."
-}
+Write-Host "Downloading Mailbox Usage Detail..." -ForegroundColor Cyan
+$mailbox = Get-GraphReportCsv -Uri "/v1.0/reports/getMailboxUsageDetail(period='$ReportPeriod')"
+Write-Host "  $($mailbox.Count) records." -ForegroundColor Gray
 
-Write-Host "Script finished." -ForegroundColor Green
+Write-Host "Downloading OneDrive Usage Detail..." -ForegroundColor Cyan
+$onedrive = Get-GraphReportCsv -Uri "/v1.0/reports/getOneDriveUsageAccountDetail(period='$ReportPeriod')"
+Write-Host "  $($onedrive.Count) records." -ForegroundColor Gray
+
+Write-Host "Downloading MFA Registration Details..." -ForegroundColor Cyan
+$mfa = Get-GraphJsonAll -Uri '/v1.0/reports/authenticationMethods/userRegistrationDetails'
+Write-Host "  $($mfa.Count) records." -ForegroundColor Gray
+
+# --- Index by UPN for joining ---
+$mailboxByUpn  = @{}
+foreach ($m in $mailbox)  { if ($m.'User Principal Name') { $mailboxByUpn[$m.'User Principal Name']  = $m } }
+
+$onedriveByUpn = @{}
+foreach ($o in $onedrive) { if ($o.'Owner Principal Name') { $onedriveByUpn[$o.'Owner Principal Name'] = $o } }
+
+$mfaByUpn      = @{}
+foreach ($r in $mfa)      { if ($r.userPrincipalName) { $mfaByUpn[$r.userPrincipalName] = $r } }
+
+# --- Merge and export ---
+Write-Host "Merging reports..." -ForegroundColor Cyan
+
+$activeUsers | ForEach-Object {
+    $upn = $_.'User Principal Name'
+    $mb  = $mailboxByUpn[$upn]
+    $od  = $onedriveByUpn[$upn]
+    $mr  = $mfaByUpn[$upn]
+
+    # Mailbox size: convert bytes to GB
+    $mailboxSizeGB = ''
+    if ($mb.'Storage Used (Byte)' -and $mb.'Storage Used (Byte)' -ne '') {
+        $mailboxSizeGB = [math]::Round([long]$mb.'Storage Used (Byte)' / 1GB, 2)
+    }
+
+    $onedriveSizeGB = ''
+    if ($od.'Storage Used (Byte)' -and $od.'Storage Used (Byte)' -ne '') {
+        $onedriveSizeGB = [math]::Round([long]$od.'Storage Used (Byte)' / 1GB, 2)
+    }
+
+    [PSCustomObject]@{
+        ReportRefreshDate      = $_.'Report Refresh Date'
+        UserPrincipalName      = $upn
+        DisplayName            = $_.'Display Name'
+        IsDeleted              = $_.'Is Deleted'
+        AssignedProducts       = $_.'Assigned Products'
+        ExchangeLastActivity   = $_.'Exchange Last Activity Date'
+        OneDriveLastActivity   = $_.'OneDrive Last Activity Date'
+        SharePointLastActivity = $_.'SharePoint Last Activity Date'
+        TeamsLastActivity      = $_.'Teams Last Activity Date'
+        MailboxCreatedDate     = $mb.'Created Date'
+        MailboxLastActivity    = $mb.'Last Activity Date'
+        MailboxItemCount       = $mb.'Item Count'
+        MailboxSizeGB          = $mailboxSizeGB
+        MailboxHasArchive      = $mb.'Has Archive'
+        OneDriveSizeGB         = $onedriveSizeGB
+        OneDriveFileCount      = $od.'File Count'
+        MFACapable             = $mr.isMfaCapable
+        MFARegistered          = $mr.isMfaRegistered
+        MFAMethodsRegistered   = if ($mr.methodsRegistered) { $mr.methodsRegistered -join '; ' } else { '' }
+    }
+} | Export-Csv -Path $OutputPath -NoTypeInformation -Encoding UTF8
+
+$count = ($activeUsers | Measure-Object).Count
+Write-Host "Report exported to '$OutputPath' ($count users)." -ForegroundColor Green
+
+# --- Disconnect ---
+try { Disconnect-MgGraph | Out-Null } catch {}
+Write-Host "Done." -ForegroundColor Green
