@@ -1,9 +1,19 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Description: This script creates mail contacts in Exchange Online from a CSV file containing email addresses and names.
+<#
+.SYNOPSIS
+    Creates mail contacts in Exchange Online from a CSV file.
+
+.DESCRIPTION
+    Connects to Exchange Online and creates mail contacts from a CSV file
+    containing FirstName, LastName, and Email columns.
+
+.NOTES
+    Name:    Create Contacts from CSV
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
 
 # Install Exchange Online module if not already installed
 if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
@@ -23,8 +33,7 @@ $csvPath = $csvPath -replace '^"|"$', ''
 
 # Validate file exists
 if (-not (Test-Path $csvPath)) {
-    Write-Error "CSV file not found at $csvPath"
-    exit
+    throw "CSV file not found at $csvPath"
 }
 
 # Import CSV data
