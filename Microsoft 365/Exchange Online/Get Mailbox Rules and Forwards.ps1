@@ -1,20 +1,28 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Get user mail rules and forwarding
-Set-ExecutionPolicy RemoteSigned
+<#
+.SYNOPSIS
+    Retrieves inbox rules and forwarding settings for Exchange Online mailboxes.
+
+.DESCRIPTION
+    Connects to Exchange Online and retrieves inbox rules, forwarding SMTP
+    addresses, and deliver-to-mailbox settings for a specified user or all
+    user mailboxes. Results are exported to C:\temp\mailrules.csv and
+    C:\temp\mailforwards.csv.
+
+.NOTES
+    Name:    Get Mailbox Rules and Forwards
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
 
 # Is the Exchange Online Management PowerShell module installed? If not, install it
 Write-Output "Connecting to Office 365"
-if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
-        Install-Module -Name ExchangeOnlineManagement -RequiredVersion 1.0.1
-        Import-Module ExchangeOnlineManagement
-    }
-    else {
-        Import-Module ExchangeOnlineManagement
-    }
+if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
+    Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser -AllowClobber
+}
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
 
 # Connect to Office 365 platform
 # -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
