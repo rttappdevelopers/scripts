@@ -1,9 +1,20 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-Set-ExecutionPolicy RemoteSigned
+<#
+.SYNOPSIS
+    Exports Exchange Online mailbox data to a CSV formatted for AppRiver user import.
+
+.DESCRIPTION
+    Connects to Exchange Online, retrieves all user mailboxes with their primary
+    SMTP address and aliases, generates random passwords, and exports the data
+    in the CSV format required by AppRiver for bulk user onboarding.
+
+.NOTES
+    Name:    Import AppRiver Users
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
 
 # Settings
 # Replace these variables as needed, to affect all users created in AppRiver
@@ -22,10 +33,10 @@ $exportpath
 
 # Connect to Exchange Online
 Write-Output "Connecting to Exchange Online `n"
-if (!(Get-Module -Name ExchangeOnlineManagement)) {
-    Install-Module -Name ExchangeOnlineManagement -Force
+if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
+    Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser -AllowClobber
 }
-Import-Module ExchangeOnlineManagement
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
 # -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
 Connect-ExchangeOnline -DisableWAM
 
