@@ -34,11 +34,13 @@ Scripts in `_Customer/` are **confidential** and contain customer-specific confi
 - Never suggest moving files from `_Customer/` into tracked folders.
 - If asked to work on a `_Customer/` script, work on it locally only — do not include its contents in any commit, PR, or public artifact.
 
-### Technician-Run Scripts (Microsoft 365)
-Scripts in `Microsoft 365/` are run interactively from a **technician's workstation**, not via RMM. These:
-- May use interactive authentication flows (e.g., `Connect-ExchangeOnline`, `Connect-MgGraph`)
+### Technician-Run Scripts (Microsoft 365, Google)
+Scripts in `Microsoft 365/` and `Google/` are run interactively from a **technician's workstation**, not via RMM. These:
+- May use interactive authentication flows (e.g., `Connect-ExchangeOnline`, `Connect-MgGraph`, browser-based OAuth)
 - Should still detect and auto-install required modules before use
 - Should not require pre-configuration beyond what can be prompted at runtime
+- **Must never use `exit`** — use `throw` for fatal errors and let the script end naturally on success. VS Code dot-sources scripts (`. script.ps1`), so `exit` kills the PowerShell Extension host. Do not add dot-source guards or child-process workarounds; just avoid `exit`.
+- Do not add dot-source re-invocation guards — these introduce quoting, auth, and console inheritance issues
 
 ---
 
@@ -82,13 +84,26 @@ Import-Module "ModuleName" -ErrorAction Stop
 - Never use `Connect-MsolService` or `MSOnline` — the MSOnline module is **end of life** and must not be introduced.
 - Never use `Connect-AzureAD` — the AzureAD module is **end of life** and must not be introduced.
 
+### Graph Authentication (verified against Microsoft Learn docs)
+For **technician scripts** (interactive, delegated access), use interactive browser auth:
+```powershell
+Connect-MgGraph -Scopes 'User.Read.All' -NoWelcome
+```
+- This is the **Interactive provider** flow — Microsoft's recommended auth method for desktop apps calling Graph with delegated permissions.
+- Omitting `-ClientId`/`-TenantId` uses Microsoft's first-party "Microsoft Graph PowerShell" app registration, which is the documented default for interactive/ad-hoc use.
+- `-UseDeviceAuthentication` (device code flow) is an alternative but should only be used when browser redirect is unavailable (e.g., headless SSH session).
+- `-NoWelcome` suppresses the welcome banner; no security impact.
+- Request only the minimum scopes required by the script's API calls.
+
 ### Required Modules (current, non-EOL)
 | Purpose | Module | Cmdlet to connect |
 |---|---|---|
 | Exchange Online | `ExchangeOnlineManagement` (v3+) | `Connect-ExchangeOnline` |
-| Azure AD / Entra ID | `Microsoft.Graph` | `Connect-MgGraph` |
+| Azure AD / Entra ID | `Microsoft.Graph.Authentication` | `Connect-MgGraph` |
 | SharePoint / OneDrive | `PnP.PowerShell` | `Connect-PnPOnline` |
 | Teams | `MicrosoftTeams` | `Connect-MicrosoftTeams` |
+
+**Note:** For Graph REST calls via `Invoke-MgGraphRequest`, only `Microsoft.Graph.Authentication` is required. Avoid importing `Microsoft.Graph` (all 38 submodules) or individual autorest-based submodules unless you need their typed cmdlets.
 
 ### EOL Remediation Rule
 If a script being modified uses EOL cmdlets (`Get-MsolUser`, `Set-MsolUser`, `Get-AzureADUser`, etc.), **retool it to use the current equivalent** before completing the task. Do not patch around EOL cmdlets or leave them in place.
@@ -134,6 +149,8 @@ Use a consistent `Write-Log` or `Write-SilentLog` function pattern with timestam
 - **SOLID** — Write single-purpose functions with clear inputs/outputs.
 - **Root-cause first** — Never patch symptoms. Identify and fix the actual cause.
 - **No shortcuts** — Prefer a correct, maintainable fix over a fast workaround.
+- **Verify, never assume** — Before adopting a pattern, confirm it is correct by checking official documentation. Do not assume a technique is "industry standard" or "best practice" without verifying against the authoritative source (e.g., Microsoft Learn, RFC, vendor docs). This applies to authentication flows, error-handling patterns, API usage, and any design decision that affects correctness or security.
+- **Prefer platform APIs** — Before writing per-item enumeration loops, check whether the platform already provides a bulk report, export, or batch API. One API call returning full-tenant data beats thousands of per-user calls.
 
 ---
 
@@ -243,6 +260,27 @@ FilesByType_results.ps1               ❌  No verb, underscores
 
 ---
 
+## Version Control and Changelog
+
+Each script in this repository is a **standalone product**. Commit and document changes accordingly.
+
+### Commit Rules
+- **One commit per script.** When modifying multiple scripts, commit each one separately with a message specific to what changed in that script.
+- Use the format: `<Verb> <Script Name>: <brief description>`
+  - Examples: `Update Get Immutable ID: switch to browser auth, install only Microsoft.Graph.Users`
+  - Examples: `Fix Get Message Trace: replace exit with throw, add help block`
+- Do not batch unrelated script changes into a single commit.
+- Batch commits are acceptable only for true cross-cutting changes that apply identically to every file (e.g., a repo-wide rename).
+
+### Changelog
+- Maintain `CHANGELOG.md` in the repository root.
+- Add an entry for every script change, grouped under a dated section.
+- Each entry should explain **what changed and why** — more detail than the commit message.
+- Reference commit hashes in changelog entries when available.
+- Use the existing format: group by date, then by script or theme.
+
+---
+
 ## Planning and Collaboration Rules
 
 - Answer questions directly before making code changes.
@@ -269,6 +307,8 @@ FilesByType_results.ps1               ❌  No verb, underscores
 - **Never** use `Read-Host` or any interactive prompt in RMM scripts.
 - **Never** hardcode credentials, tenant IDs, or customer-specific values in scripts.
 - **Never** leave EOL cmdlets in place when modifying an existing script — retool them.
+- **Never** use `exit` in technician scripts (`Microsoft 365/`, `Google/`) — use `throw` for fatal errors and let the script end naturally on success.
+- **Never** add dot-source re-invocation guards or child-process workarounds — just avoid `exit` in technician scripts.
 
 ---
 
@@ -283,3 +323,5 @@ FilesByType_results.ps1               ❌  No verb, underscores
 - Comment-based help is present and accurate.
 - If an existing script was modified, any EOL cmdlets encountered were replaced.
 - The folder `README.md` script index has been updated to reflect any added, removed, or renamed scripts.
+- Changes are committed per-script with descriptive messages.
+- `CHANGELOG.md` has been updated with an entry for each changed script.
