@@ -1,10 +1,24 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Fix Message Trace Report Encoding
-# This script fixes encoding issues in downloaded Exchange Online message trace reports
+<#
+.SYNOPSIS
+    Fixes encoding issues in downloaded Exchange Online message trace reports.
+
+.DESCRIPTION
+    Reads a downloaded message trace CSV report, detects the correct encoding,
+    converts it to UTF-8, and parses the recipient_status column into separate
+    columns for addresses, delivery statuses, and recipient counts.
+
+.PARAMETER InputPath
+    Path to the downloaded message trace report CSV file.
+
+.PARAMETER OutputPath
+    Path for the fixed output CSV. Defaults to the input filename with _fixed suffix.
+
+.NOTES
+    Name:    Fix Message Trace Encoding
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
 
 param(
     [string]$InputPath = "",
@@ -21,8 +35,7 @@ if ([string]::IsNullOrWhiteSpace($InputPath)) {
 
 # Validate input file exists
 if (!(Test-Path $InputPath)) {
-    Write-Error "File not found: $InputPath"
-    exit 1
+    throw "File not found: $InputPath"
 }
 
 # Set output path if not provided
@@ -65,8 +78,7 @@ try {
     }
     
     if ([string]::IsNullOrEmpty($content)) {
-        Write-Error "Could not read the file with any standard encoding. The file may be corrupted or not a message trace report."
-        exit 1
+        throw "Could not read the file with any standard encoding. The file may be corrupted or not a message trace report."
     }
     
     # Write with UTF-8 no BOM for maximum compatibility
@@ -166,6 +178,5 @@ try {
     Write-Output "You can now open this file in Excel, OnlyOffice, or any CSV viewer."
 }
 catch {
-    Write-Error "Failed to process file: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to process file: $($_.Exception.Message)"
 }
