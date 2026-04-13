@@ -1,10 +1,22 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Add Phinsec Phishing Simulation allowances to a customer's Office 365 tenant
-## Reference: https://app.Phinsec.com/module/phishing-simulations/whitelisting
+<#
+.SYNOPSIS
+    Configures Phinsec phishing simulation allowances in an Office 365 tenant.
+
+.DESCRIPTION
+    Connects to Exchange Online and Security & Compliance Center to configure
+    phishing simulation overrides, anti-spam allowlists, and Safe Links bypass
+    rules for Phinsec phishing simulation campaigns. Removes any existing
+    Defendify rules to replace with Phinsec configuration.
+
+.NOTES
+    Name:    Configure Phinsec Phishing Simulation
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+    Ref:     https://app.Phinsec.com/module/phishing-simulations/whitelisting
+#>
+
+param()
 
 # Settings
 ## Replace these variables as needed
@@ -61,8 +73,7 @@ try {
     if ($psGet.Version -lt [Version]'2.0') {
         Write-Host "Updating PowerShellGet before installing dependencies..."
         Install-Module -Name PowerShellGet -Scope CurrentUser -Force -AllowClobber
-        Write-Host "PowerShellGet updated. Please restart PowerShell and re-run this script." -ForegroundColor Yellow
-        exit 1
+        throw "PowerShellGet updated. Please restart PowerShell and re-run this script."
     }
 } catch {
     Write-Warning "Could not check/update PowerShellGet: $($_.Exception.Message)"
@@ -74,15 +85,13 @@ if (-Not (Get-Module -Name ExchangeOnlineManagement -ListAvailable)) {
     try {
         Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber -ErrorAction Stop
     } catch {
-        Write-Error "Failed to install ExchangeOnlineManagement: $($_.Exception.Message)"
-        exit 1
+        throw "Failed to install ExchangeOnlineManagement: $($_.Exception.Message)"
     }
 }
 try {
     Import-Module ExchangeOnlineManagement -Force -ErrorAction Stop
 } catch {
-    Write-Error "Failed to import ExchangeOnlineManagement: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to import ExchangeOnlineManagement: $($_.Exception.Message)"
 }
 
 # Connect to MS 365 Security & Compliance Center and set phishing override policy
