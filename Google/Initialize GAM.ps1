@@ -125,27 +125,24 @@ if ($existingWorkspaces.Count -gt 0) {
             Write-Host ("  `$env:GAMCFGDIR = '$ConfigDir'") -ForegroundColor DarkGray
             Write-Host "  gam info domain" -ForegroundColor DarkGray
             Stop-Transcript
-            exit 0
+            return
         }
     } elseif ($selInt -eq $newIndex) {
         $newDomain = Read-Host "Enter the primary domain for the new customer (e.g., contoso.com)"
         if ([string]::IsNullOrWhiteSpace($newDomain)) {
-            Write-Error "Domain is required."
-            exit 1
+            throw "Domain is required."
         }
         $ConfigDir = Join-Path $ConfigDir ($newDomain.Trim().ToLower())
         $env:GAMCFGDIR = $ConfigDir
         Write-Host "New workspace path: $ConfigDir" -ForegroundColor Green
     } else {
-        Write-Error "Invalid selection. Exiting."
-        exit 1
+        throw "Invalid selection. Exiting."
     }
 } else {
     Write-Host "No existing customer workspaces found under: $ConfigDir" -ForegroundColor Yellow
     $newDomain = Read-Host "Enter the primary domain for the new customer (e.g., contoso.com)"
     if ([string]::IsNullOrWhiteSpace($newDomain)) {
-        Write-Error "Domain is required."
-        exit 1
+        throw "Domain is required."
     }
     $ConfigDir = Join-Path $ConfigDir ($newDomain.Trim().ToLower())
     $env:GAMCFGDIR = $ConfigDir
@@ -177,19 +174,13 @@ if ($gamCmd) {
             if ($gamCmd) {
                 Write-Host "GAM7 installed successfully." -ForegroundColor Green
             } else {
-                Write-Host "GAM7 installed but 'gam' is not yet on PATH." -ForegroundColor Red
-                Write-Host "Add $GamDir to your system PATH, restart this terminal, and re-run." -ForegroundColor Red
-                exit 1
+                throw "GAM7 installed but 'gam' is not yet on PATH. Add $GamDir to your system PATH, restart this terminal, and re-run."
             }
         } catch {
-            Write-Error "winget install failed: $($_.Exception.Message)"
-            Write-Host "Install GAM7 manually: https://github.com/GAM-team/GAM/releases" -ForegroundColor Red
-            exit 1
+            throw "winget install failed: $($_.Exception.Message). Install GAM7 manually: https://github.com/GAM-team/GAM/releases"
         }
     } else {
-        Write-Host "winget is not available on this system." -ForegroundColor Red
-        Write-Host "Install GAM7 manually from: https://github.com/GAM-team/GAM/releases" -ForegroundColor Red
-        exit 1
+        throw "winget is not available on this system. Install GAM7 manually from: https://github.com/GAM-team/GAM/releases"
     }
 }
 
@@ -231,8 +222,7 @@ Write-Step "3 of 7" "Initialize GAM config"
 Write-Host "Running: gam config drive_dir $WorkDir verify" -ForegroundColor DarkGray
 & gam config drive_dir $WorkDir verify
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "GAM config initialization failed."
-    exit 1
+    throw "GAM config initialization failed."
 }
 Write-Host "GAM config initialized." -ForegroundColor Green
 
@@ -241,8 +231,7 @@ if ([string]::IsNullOrWhiteSpace($AdminEmail)) {
     Write-Host ""
     $AdminEmail = Read-Host "Enter the Super Admin email for this Google Workspace tenant"
     if ([string]::IsNullOrWhiteSpace($AdminEmail)) {
-        Write-Error "Admin email is required."
-        exit 1
+        throw "Admin email is required."
     }
 }
 
@@ -277,8 +266,7 @@ Wait-ForConfirmation "Press Enter to begin GCP project creation..."
 
 & gam create project
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "GCP project creation failed."
-    exit 1
+    throw "GCP project creation failed."
 }
 Write-Host "GCP project created." -ForegroundColor Green
 
@@ -293,8 +281,7 @@ Wait-ForConfirmation "Press Enter to begin OAuth authorization..."
 
 & gam oauth create
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "OAuth authorization failed."
-    exit 1
+    throw "OAuth authorization failed."
 }
 Write-Host "OAuth scopes authorized." -ForegroundColor Green
 
@@ -347,8 +334,7 @@ Write-Host "Primary Domain: $primaryDomain" -ForegroundColor White
 
 & gam config customer_id $customerId domain $primaryDomain timezone local save verify
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to save GAM configuration."
-    exit 1
+    throw "Failed to save GAM configuration."
 }
 
 # -- Complete ------------------------------------------------------------------
@@ -367,4 +353,3 @@ Write-Host ""
 Write-Host "Log saved to: $TranscriptFile" -ForegroundColor DarkGray
 
 Stop-Transcript
-exit 0
