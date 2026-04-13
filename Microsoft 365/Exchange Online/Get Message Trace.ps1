@@ -1,20 +1,27 @@
 #Requires -Version 7
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or later. Download it from https://aka.ms/powershell"
-    exit 1
-}
-# Message Trace Script
-Set-ExecutionPolicy RemoteSigned
+<#
+.SYNOPSIS
+    Performs an Exchange Online message trace and exports results to CSV.
+
+.DESCRIPTION
+    Connects to Exchange Online and searches for messages matching the specified
+    sender, recipient, subject, and date range criteria. Results are displayed
+    in a table and exported to C:\temp\messagetrace.csv.
+
+.NOTES
+    Name:    Get Message Trace
+    Author:  RTT Support
+    Context: Technician workstation (interactive)
+#>
+
+param()
 
 # Is the Exchange Online Management PowerShell module installed? If not, install it
 Write-Output "Connecting to Office 365"
-if (!(Get-InstalledModule -Name "ExchangeOnlineManagement")) {
-        Install-Module -Name ExchangeOnlineManagement
-        Import-Module ExchangeOnlineManagement
-    }
-    else {
-        Import-Module ExchangeOnlineManagement
-    }
+if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
+    Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser -AllowClobber
+}
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
 
 # Connect to Office 365 platform
 # -DisableWAM bypasses Web Account Manager to fix sign-in errors in elevated/non-standard terminals (e.g. running from C:\WINDOWS\system32).
