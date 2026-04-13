@@ -4,6 +4,113 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-04-13
+
+### Repository — Design spec and engineering principles
+- Added "Verify, never assume" and "Prefer platform APIs" to Engineering Principles in `.github/copilot-instructions.md`
+- Added verified Graph Authentication section documenting interactive browser auth as the recommended flow for technician scripts, with source references to Microsoft Learn
+- Corrected Required Modules table: `Microsoft.Graph` → `Microsoft.Graph.Authentication` (only module needed for REST calls via `Invoke-MgGraphRequest`)
+- Added Version Control and Changelog section requiring per-script commits and changelog entries
+- Updated Definition of Done to include per-script commits and changelog updates
+
+### Microsoft 365 — Get Mailbox Usage (Reporting)
+- **Rewrote to v3.0** — replaced per-user Graph SDK enumeration with four bulk report APIs (`getOffice365ActiveUserDetail`, `getMailboxUsageDetail`, `getOneDriveUsageAccountDetail`, `userRegistrationDetails`), reducing from thousands of API calls to four
+- Now requires only `Microsoft.Graph.Authentication` (previously loaded all 38 `Microsoft.Graph` submodules, ~1.5 GB)
+- Switched from device code auth to interactive browser auth
+- Replaced `exit` with `throw` for fatal errors; removed dot-source guard
+- Added `$ErrorActionPreference = 'Stop'` and proper `try/catch` structure
+
+### Microsoft 365 — Get MFA Status Report (Security and Compliance)
+- Replaced `Install-Module Microsoft.Graph` (all 38 submodules) with targeted installs of only `Microsoft.Graph.Authentication`, `Microsoft.Graph.Users`, and `Microsoft.Graph.Identity.SignIns`
+- Switched from `-UseDeviceAuthentication` to interactive browser auth
+- Replaced all `exit` calls with `throw`
+- Removed redundant `if ($PSVersionTable...)` version check (already handled by `#Requires -Version 7`)
+- Added comment-based help block (`.SYNOPSIS`, `.DESCRIPTION`, `.NOTES`)
+- Added `$ErrorActionPreference = 'Stop'`
+
+### Microsoft 365 — Get Immutable ID (Entra ID)
+- Replaced `Install-Module Microsoft.Graph` (all 38 submodules) with `Install-Module Microsoft.Graph.Users` (only module needed)
+- Switched from `-UseDeviceAuthentication` to interactive browser auth
+- Replaced all `exit` calls with `throw`; removed trailing `exit 0`
+- Updated help block to reflect corrected module and auth method
+
+### Microsoft 365 — Get Message Trace (Exchange Online)
+- Fixed module detection: replaced fragile `Get-InstalledModule` (throws if not installed) with `Get-Module -ListAvailable`
+- Added `-Force -Scope CurrentUser -AllowClobber` to `Install-Module` for non-interactive install
+- Removed `Set-ExecutionPolicy RemoteSigned` (unnecessary, fails without elevation)
+- Removed redundant version check; replaced `exit` with `throw`
+- Added comment-based help block
+
+### Microsoft 365 — Get Mailbox Rules and Forwards (Exchange Online)
+- Removed pinned `-RequiredVersion 1.0.1` on ExchangeOnlineManagement (years outdated)
+- Fixed module detection: replaced fragile `Get-InstalledModule` with `Get-Module -ListAvailable`
+- Removed `Set-ExecutionPolicy RemoteSigned`
+- Removed redundant version check; replaced `exit` with `throw`
+- Added comment-based help block
+
+### Microsoft 365 — Import AppRiver Users (Exchange Online)
+- Fixed module detection: replaced `Get-Module` (without `-ListAvailable`, only checks loaded modules) with `Get-Module -ListAvailable`
+- Added `-Force -Scope CurrentUser -AllowClobber` to `Install-Module`
+- Added `-ErrorAction Stop` to `Import-Module`
+- Removed `Set-ExecutionPolicy RemoteSigned`
+- Removed redundant version check and `exit`
+- Added comment-based help block
+
+### Microsoft 365 — Download Message Trace Reports (Exchange Online)
+- Fixed module detection: replaced `Get-InstalledModule` with `Get-Module -ListAvailable`
+- Removed `Set-ExecutionPolicy RemoteSigned`
+- Replaced `exit` calls with `throw` and `return`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Fix Message Trace Encoding (Exchange Online)
+- Replaced all `exit 1` calls with `throw`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Create Contacts from CSV (Exchange Online)
+- Replaced `exit` calls with `throw`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Add Users to Distribution List (Exchange Online)
+- Replaced `exit` calls with `throw`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Configure AppRiver Inbound Limit (Exchange Online)
+- Replaced all `exit 1` calls with `throw`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Configure AppRiver Bypass Filtering (Exchange Online)
+- Replaced `exit 1` with `throw`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Configure Phinsec Phishing Simulation (Security and Compliance)
+- Replaced all `exit 1` calls with `throw`
+- Removed redundant version check
+- Added comment-based help block
+
+### Microsoft 365 — Configure Defendify Phishing Simulation (Security and Compliance)
+- Replaced `exit 1` with `throw`
+- Fixed broken module version check: `Get-Module` (without `-ListAvailable`) always returned null; replaced with proper `Get-Module -ListAvailable` pattern
+- Removed unnecessary `Find-Module` / `Update-Module` version comparison logic
+- Added `-Scope CurrentUser -AllowClobber -ErrorAction Stop` to `Install-Module`
+- Removed redundant version check
+- Added comment-based help block
+
+### Google — Initialize GAM
+- Replaced all `exit 1` calls with `throw`; replaced `exit 0` with `return` or natural script end
+- No other changes needed (already had proper help block and no M365 module concerns)
+
+### Google — Audit Shared Drive Folder
+- Replaced all `exit 1` calls with `throw`; replaced `exit 0` with natural script end
+- No other changes needed (already had proper help block)
+
+---
+
 ## [Unreleased] — 2026-03-31
 
 ### Repository restructure and documentation
