@@ -13,8 +13,8 @@
     .\"Office 365 - Get Immutable ID.ps1"
 
 .NOTES
-    Requires:  PowerShell 7+, Microsoft.Graph module
-    Auth:      Interactive browser-based sign-in (device code flow)
+    Requires:  PowerShell 7+, Microsoft.Graph.Users module
+    Auth:      Interactive browser-based sign-in (delegated)
     Permissions: User.Read.All (delegated)
 #>
 #Requires -Version 7
@@ -24,18 +24,17 @@ $ErrorActionPreference = 'Stop'
 
 # --- Module management --------------------------------------------------------
 if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Users)) {
-    Write-Host "Installing Microsoft.Graph module (this may take a moment)..."
-    Install-Module -Name Microsoft.Graph -Force -AllowClobber -Scope CurrentUser
+    Write-Host "Installing Microsoft.Graph.Users module (this may take a moment)..."
+    Install-Module -Name Microsoft.Graph.Users -Force -AllowClobber -Scope CurrentUser
 }
 Import-Module Microsoft.Graph.Users -ErrorAction Stop
 
-# --- Authentication (modern — browser-based) ----------------------------------
+# --- Authentication (modern — interactive browser) ----------------------------
 try {
-    Connect-MgGraph -Scopes 'User.Read.All' -UseDeviceAuthentication -ErrorAction Stop
+    Connect-MgGraph -Scopes 'User.Read.All' -NoWelcome
     Write-Host "Connected to Microsoft Graph successfully." -ForegroundColor Green
 } catch {
-    Write-Error "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
 }
 
 # --- Data retrieval -----------------------------------------------------------
@@ -53,10 +52,7 @@ try {
         # $users | Export-Csv -Path "$HOME\Desktop\ImmutableIDs.csv" -NoTypeInformation -Encoding UTF8
     }
 } catch {
-    Write-Error "Failed to retrieve users: $($_.Exception.Message)"
-    exit 1
+    throw "Failed to retrieve users: $($_.Exception.Message)"
 } finally {
     Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 }
-
-exit 0
