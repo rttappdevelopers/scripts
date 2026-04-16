@@ -309,6 +309,7 @@ Each script in this repository is a **standalone product**. Commit and document 
 - **Never** leave EOL cmdlets in place when modifying an existing script — retool them.
 - **Never** use `exit` in technician scripts (`Microsoft 365/`, `Google/`) — use `throw` for fatal errors and let the script end naturally on success.
 - **Never** add dot-source re-invocation guards or child-process workarounds — just avoid `exit` in technician scripts.
+- **Never** use em dashes (—) in responses or in script content. Em dashes are non-ASCII and break PowerShell string literals. Use plain hyphens (-) instead.
 
 ---
 
