@@ -47,3 +47,6 @@ __pycache__/
 .classpath
 .settings/
 Microsoft 365/Reporting/M365_User_Report.csv
+
+# Google Drive audit output folders
+DriveAudit*/
