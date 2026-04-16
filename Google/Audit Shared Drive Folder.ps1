@@ -94,6 +94,12 @@ $TranscriptFile = Join-Path $TranscriptDir ("Audit-SharedDrive_{0}.txt" -f (Get-
 Start-Transcript -Path $TranscriptFile -Append
 Write-Host "Transcript: $TranscriptFile" -ForegroundColor DarkGray
 
+# Save the original GAMCFGDIR now so the finally block can restore it even if
+# the script is interrupted (Ctrl+C) before the restore line at the end.
+$originalGamCfgDir = $env:GAMCFGDIR
+
+try {
+
 # -- Verify GAM is installed and configured -----------------------------------
 # GAM must be on the system PATH before any API calls can be made.
 # Get-Command probes PATH without raising a terminating error, so we can give
@@ -109,7 +115,7 @@ if (-not (Get-Command gam -ErrorAction SilentlyContinue)) {
 #
 # We save the original value so we can restore it when the script exits,
 # avoiding side effects on the calling shell session.
-$originalGamCfgDir = $env:GAMCFGDIR
+# (The original value is captured before the try block above; no assignment needed here.)
 
 if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) {
     # A specific config directory was passed via -ConfigDir; use it directly
@@ -576,8 +582,11 @@ Write-Host "  totalFileSize      - Size of all files at all levels below (bytes)
 Write-Host ""
 Write-Host "Log saved to: $TranscriptFile" -ForegroundColor DarkGray
 
-# Restore GAMCFGDIR to its original value so the calling shell session is not
-# left pointing at this customer's workspace after the script exits.
-$env:GAMCFGDIR = $originalGamCfgDir
-
-Stop-Transcript
+} finally {
+    # Restore GAMCFGDIR and stop the transcript regardless of whether the script
+    # completed normally or was interrupted (e.g., Ctrl+C during a long GAM query).
+    # Without this, Stop-Transcript is never called on interruption, leaving the
+    # transcript active in the session and causing duplicate files on the next run.
+    $env:GAMCFGDIR = $originalGamCfgDir
+    Stop-Transcript
+}
