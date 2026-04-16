@@ -272,7 +272,7 @@ if (-not [string]::IsNullOrWhiteSpace($FolderName) -and [string]::IsNullOrWhiteS
     )
     $folderSearchOutput = & gam @folderSearchArgs 2>&1
     # Strip GAM progress lines so only the CSV data remains.
-    $folderSearchData   = $folderSearchOutput | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
+    $folderSearchData   = $folderSearchOutput | Where-Object { $_ -match ',' }
     $folderResults      = @($folderSearchData | ConvertFrom-Csv)
 
     if ($folderResults.Count -eq 0) {
@@ -363,9 +363,11 @@ try {
         $diskUsageArgs += @("drivefilename", $FolderName)
     }
 
-    # Run GAM without 2>&1 so progress messages on stderr print live to the
-    # console. Only stdout (the CSV rows) is captured in $diskUsageData.
-    $diskUsageData = & gam @diskUsageArgs | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
+    # Omit 2>&1 so GAM's stderr progress lines (Getting/Got) stream live to the console.
+    # Only stdout (the CSV rows) is captured. Filter to lines containing commas so that
+    # GAM's stdout summary lines ("User: ... Drive Folder: ... Printed") are excluded;
+    # those use whitespace separators and contain no commas, unlike CSV header/data rows.
+    $diskUsageData = & gam @diskUsageArgs | Where-Object { $_ -match ',' }
 
     if ($diskUsageData) {
         $diskUsageData | Out-File -FilePath $diskUsageCsv -Encoding UTF8
@@ -414,7 +416,8 @@ try {
     )
 
     # Run GAM without 2>&1 so progress messages on stderr print live to the console.
-    $fileListData = & gam @fileListArgs | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
+    # Filter to lines containing commas so GAM's stdout summary lines are excluded.
+    $fileListData = & gam @fileListArgs | Where-Object { $_ -match ',' }
 
     if ($fileListData) {
         $fileListData | Out-File -FilePath $fileDetailCsv -Encoding UTF8
