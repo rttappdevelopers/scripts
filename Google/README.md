@@ -4,6 +4,27 @@ Scripts for auditing and managing Google Workspace environments using [GAM7](htt
 
 ---
 
+## Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Manual Setup](#manual-setup)
+  - [Installing GAM7](#installing-gam7)
+  - [1. Create directories](#1-create-directories)
+  - [2. Set environment variables](#2-set-environment-variables)
+  - [3. Initialize GAM](#3-initialize-gam)
+  - [4. Create your GCP project](#4-create-your-gcp-project)
+  - [5. Authorize client (OAuth) scopes](#5-authorize-client-oauth-scopes)
+  - [6. Authorize the service account (domain-wide delegation)](#6-authorize-the-service-account-domain-wide-delegation)
+  - [7. Save basic config values](#7-save-basic-config-values)
+- [Verifying the Connection](#verifying-the-connection)
+- [Running Scripts](#running-scripts)
+- [Useful GAM Commands Reference](#useful-gam-commands-reference)
+- [Script Index](#script-index)
+- [Resources](#resources)
+
+---
+
 ## Prerequisites
 
 - **Google Workspace** — Paid, Education, or Non-profit edition (Legacy Free has limited API support)
