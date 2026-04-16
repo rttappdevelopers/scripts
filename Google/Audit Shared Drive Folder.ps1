@@ -337,6 +337,7 @@ Write-Host ""
 #   totalFileCount  / totalFolderCount  / totalFileSize   — items in this folder + all descendants
 # This gives migration planners a quick top-down view of where data volume lives.
 Write-Host "[1/3] Running disk usage analysis..." -ForegroundColor Yellow
+Write-Host "  Querying Google Drive API - this may take several minutes for large folders." -ForegroundColor DarkGray
 try {
     $diskUsageArgs = @(
         "user", $UserEmail,
@@ -344,9 +345,9 @@ try {
     )
 
     # The folder selector differs by audit mode:
-    #   shareddriveid — root of an entire Shared Drive
-    #   id:<guid>     — a specific folder by its Drive ID (unambiguous)
-    #   drivefilename — folder by name (only reached if FolderName was never
+    #   shareddriveid - root of an entire Shared Drive
+    #   id:<guid>     - a specific folder by its Drive ID (unambiguous)
+    #   drivefilename - folder by name (only reached if FolderName was never
     #                   resolved to an ID above, which shouldn't happen)
     if ($IncludeSharedDrive) {
         $diskUsageArgs += @("shareddriveid", $FolderId)
@@ -356,10 +357,9 @@ try {
         $diskUsageArgs += @("drivefilename", $FolderName)
     }
 
-    $diskUsageOutput = & gam @diskUsageArgs 2>&1
-    # GAM writes progress lines to stderr that get mixed into the output when
-    # 2>&1 is used. Strip them so only valid CSV rows reach the file.
-    $diskUsageData = $diskUsageOutput | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
+    # Run GAM without 2>&1 so progress messages on stderr print live to the
+    # console. Only stdout (the CSV rows) is captured in $diskUsageData.
+    $diskUsageData = & gam @diskUsageArgs | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
 
     if ($diskUsageData) {
         $diskUsageData | Out-File -FilePath $diskUsageCsv -Encoding UTF8
@@ -384,6 +384,7 @@ try {
 # showownedby any ensures files owned by other users (e.g. external accounts)
 # are included and not silently skipped.
 Write-Host "[2/3] Retrieving file details with ownership and permissions..." -ForegroundColor Yellow
+Write-Host "  Querying Google Drive API - this may take several minutes for large folders." -ForegroundColor DarkGray
 try {
     $fileListArgs = @(
         "user", $UserEmail,
@@ -406,8 +407,8 @@ try {
         "showshareddrivepermissions"
     )
 
-    $fileListOutput = & gam @fileListArgs 2>&1
-    $fileListData = $fileListOutput | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
+    # Run GAM without 2>&1 so progress messages on stderr print live to the console.
+    $fileListData = & gam @fileListArgs | Where-Object { $_ -notmatch "^(User:|Getting |Got )" }
 
     if ($fileListData) {
         $fileListData | Out-File -FilePath $fileDetailCsv -Encoding UTF8
