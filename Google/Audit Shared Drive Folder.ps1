@@ -217,11 +217,20 @@ if ([string]::IsNullOrWhiteSpace($FolderName) -and [string]::IsNullOrWhiteSpace(
             if ([string]::IsNullOrWhiteSpace($FolderId)) {
                 throw "Folder ID is required."
             }
+            # Accept a full Drive URL in addition to a bare ID.
+            # Pattern: /folders/<ID> optionally followed by ? or end of string.
+            if ($FolderId -match '/folders/([^/?]+)') {
+                $FolderId = $Matches[1]
+            }
         }
         '3' {
             $FolderId = Read-Host "Enter the Shared Drive ID"
             if ([string]::IsNullOrWhiteSpace($FolderId)) {
                 throw "Shared Drive ID is required."
+            }
+            # Accept a full Drive URL in addition to a bare ID.
+            if ($FolderId -match '/folders/([^/?]+)') {
+                $FolderId = $Matches[1]
             }
             $IncludeSharedDrive = $true
         }
@@ -425,8 +434,10 @@ try {
     if (Test-Path $fileDetailCsv) {
         $files = Import-Csv $fileDetailCsv
 
-        # GAM names the full-path column 'path.0' (and 'path.1', 'path.2'... for
-        # files with multiple parents). We take the first one.
+        if (-not $files) {
+            Write-Warning "  FileDetails.csv is empty — no files were returned by GAM. Skipping summary."
+        } else {
+        # GAM names the full-path column 'path.0' (and 'path.1', 'path.2'...
         $pathCol = ($files | Get-Member -MemberType NoteProperty |
             Where-Object { $_.Name -match "^path" } |
             Select-Object -First 1).Name
@@ -518,7 +529,8 @@ try {
             $summaryData = $summary.Values | Sort-Object FolderPath
             $summaryData | Export-Csv -Path $summaryCsv -NoTypeInformation -Encoding UTF8
             Write-Host "  Saved $($summaryData.Count) folder summaries to Summary.csv" -ForegroundColor Green
-        }
+        }   # end if (-not $pathCol) ... else
+        }   # end if (-not $files) ... else
     } else {
         Write-Warning "  FileDetails.csv not found - skipping external ownership/sharing analysis."
     }
