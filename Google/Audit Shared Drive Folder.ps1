@@ -133,6 +133,11 @@ if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) {
 
     if ($existingWorkspaces.Count -eq 0) {
         throw "No initialized customer workspaces found under: $ConfigBaseDir. Run '.\Initialize GAM.ps1' first to set up a workspace."
+    } elseif ($existingWorkspaces.Count -eq 1) {
+        # Only one workspace — no point prompting; select it automatically.
+        $ConfigDir = Join-Path $ConfigBaseDir $existingWorkspaces[0]
+        $env:GAMCFGDIR = $ConfigDir
+        Write-Host "Using workspace: $($existingWorkspaces[0])" -ForegroundColor Green
     } else {
         Write-Host ""
         Write-Host "Available customer workspaces:" -ForegroundColor Cyan
