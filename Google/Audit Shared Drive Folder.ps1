@@ -140,17 +140,13 @@ if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) {
             Write-Host ("  [{0}] {1}" -f ($i + 1), $existingWorkspaces[$i]) -ForegroundColor Green
         }
         Write-Host ""
-        $sel = Read-Host ("Select workspace [1-{0}]" -f $existingWorkspaces.Count)
-        # Empty input defaults to [1].
-        if ([string]::IsNullOrWhiteSpace($sel)) { $sel = "1" }
         $selInt = 0
-        if ([int]::TryParse($sel.Trim(), [ref]$selInt) -and $selInt -ge 1 -and $selInt -le $existingWorkspaces.Count) {
-            $ConfigDir = Join-Path $ConfigBaseDir $existingWorkspaces[$selInt - 1]
-            $env:GAMCFGDIR = $ConfigDir
-            Write-Host "Selected: $($existingWorkspaces[$selInt - 1])" -ForegroundColor Green
-        } else {
-            throw "Invalid selection."
-        }
+        do {
+            $sel = Read-Host ("Select workspace [1-{0}]" -f $existingWorkspaces.Count)
+        } while (-not ([int]::TryParse($sel.Trim(), [ref]$selInt) -and $selInt -ge 1 -and $selInt -le $existingWorkspaces.Count))
+        $ConfigDir = Join-Path $ConfigBaseDir $existingWorkspaces[$selInt - 1]
+        $env:GAMCFGDIR = $ConfigDir
+        Write-Host "Selected: $($existingWorkspaces[$selInt - 1])" -ForegroundColor Green
     }
 }
 
