@@ -121,9 +121,14 @@ if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) {
     # This filters out any partially-initialized or unrelated folders.
     $existingWorkspaces = @()
     if (Test-Path $ConfigBaseDir) {
-        $existingWorkspaces = Get-ChildItem -Path $ConfigBaseDir -Directory -ErrorAction SilentlyContinue |
-            Where-Object { Test-Path (Join-Path $_.FullName "gam.cfg") } |
-            Select-Object -ExpandProperty Name | Sort-Object
+        # Wrap in @() to guarantee an array even when only one workspace exists.
+        # Without it, a single result is unwrapped to a bare string and indexing
+        # into it ($existingWorkspaces[$i]) returns individual characters.
+        $existingWorkspaces = @(
+            Get-ChildItem -Path $ConfigBaseDir -Directory -ErrorAction SilentlyContinue |
+                Where-Object { Test-Path (Join-Path $_.FullName "gam.cfg") } |
+                Select-Object -ExpandProperty Name | Sort-Object
+        )
     }
 
     if ($existingWorkspaces.Count -eq 0) {
