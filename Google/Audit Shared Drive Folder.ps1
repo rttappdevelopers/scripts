@@ -435,7 +435,7 @@ try {
         $files = Import-Csv $fileDetailCsv
 
         if (-not $files) {
-            Write-Warning "  FileDetails.csv is empty — no files were returned by GAM. Skipping summary."
+            Write-Warning "  FileDetails.csv is empty - no files were returned by GAM. Skipping summary."
         } else {
         # GAM names the full-path column 'path.0' (and 'path.1', 'path.2'...
         $pathCol = ($files | Get-Member -MemberType NoteProperty |
