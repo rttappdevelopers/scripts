@@ -584,12 +584,19 @@ try {
             } | Select-Object -First 1
             $rootFolderName = if ($rootEntry) { ($rootEntry.FolderPath.TrimStart('/') -split '/')[-1] } else { $FolderId }
 
+            $rootAnnotation = if ($rootEntry) {
+                $ri = $rootEntry.TotalFiles - $rootEntry.ExternallyOwned
+                $re = $rootEntry.ExternallyOwned
+                $rs = $rootEntry.SharedExternally
+                "  ($ri / $re / $rs)"
+            } else { "" }
+
             $treeLines = @()
             $treeLines += "Google Drive Folder Ownership Tree"
             $treeLines += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
             $treeLines += "Domain:    $Domain"
             $treeLines += "Folder ID: $FolderId"
-            $treeLines += "Folder:    $rootFolderName"
+            $treeLines += "Folder:    $rootFolderName$rootAnnotation"
             $treeLines += ""
             $treeLines += "Legend: owned internal / owned external / shared external"
             $treeLines += ""
