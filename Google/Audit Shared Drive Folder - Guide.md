@@ -105,7 +105,7 @@ Any parameter not supplied on the command line will still be prompted for intera
 
 ### Examples
 
-**Audit "Active Members" folder, let script prompt for everything else:**
+**Audit a folder, let script prompt for everything else:**
 ```powershell
 .\"Audit Shared Drive Folder.ps1"
 ```
@@ -171,12 +171,12 @@ Depth-0 folders are the immediate children of the root folder you are auditing. 
 | Column | Source | What it means |
 |---|---|---|
 | `Group` | GAM | Name of the top-level folder |
-| `MemberFolders` | GAM (authoritative) | Direct subfolders immediately inside this top-level folder |
+| `DirectFolders` | GAM (authoritative) | Direct subfolders immediately inside this top-level folder |
 | `TotalFolders` | GAM | All subfolders at any depth below this group folder (recursive) |
 | `TotalFiles` | GAM | All files at any depth below this group folder (recursive) |
 | `TotalFileSizeBytes` | GAM | Bytes of all files at any depth (recursive, uploaded files only - see Key Concepts) |
-| `TotalOwnedExternal` | Derived | Files with external owners **anywhere in the subtree** (all member folders combined) |
-| `TotalSharedExternal` | Derived | Files shared externally **anywhere in the subtree** (all member folders combined) |
+| `TotalOwnedExternal` | Derived | Files with external owners **anywhere in the subtree** (all subfolders combined) |
+| `TotalSharedExternal` | Derived | Files shared externally **anywhere in the subtree** (all subfolders combined) |
 
 `TotalOwnedExternal` and `TotalSharedExternal` are summed from every subfolder under the top-level folder using ownership data derived from FileDetails.csv. Use these to compare risk levels across top-level folders at a glance. For per-subfolder detail, use FolderDetails.csv filtered by the top-level folder path. For the specific files driving these numbers, use FileDetails.csv.
 
@@ -319,7 +319,7 @@ A file can be internally owned and externally shared (common), or externally own
 ### Answering common planning questions
 
 **"How many subfolders are in each top-level folder?"**
-- Open `Summary.csv` - the `MemberFolders` column is the direct subfolder count per top-level folder.
+- Open `Summary.csv` - the `DirectFolders` column is the direct subfolder count per top-level folder.
 
 **"Which top-level folders have the most data?"**
 - Open `Summary.csv`, sort by `TotalFileSizeBytes` descending.
@@ -328,7 +328,7 @@ A file can be internally owned and externally shared (common), or externally own
 - Open `Summary.csv`, sort by `TotalOwnedExternal` or `TotalSharedExternal` descending.
 
 **"Which individual folders have the most external ownership risk?"**
-- Open `FolderDetails.csv`, sort by `OwnedExternal` descending. Filter out depth -1 (root) and depth 0 (group) rows to focus on member folders.
+- Open `FolderDetails.csv`, sort by `OwnedExternal` descending. Filter out depth -1 (root) and depth 0 (group) rows to focus on subfolders.
 
 **"Which specific files are externally owned?"**
 - Open `FileDetails.csv`. Filter the `owners.0.emailAddress` column to rows where the domain is not your internal domain.
