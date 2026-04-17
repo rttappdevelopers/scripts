@@ -588,7 +588,8 @@ try {
                 $ri = $rootEntry.TotalFiles - $rootEntry.ExternallyOwned
                 $re = $rootEntry.ExternallyOwned
                 $rs = $rootEntry.SharedExternally
-                "  ($ri / $re / $rs)"
+                $rt = $rootEntry.TotalFiles
+                "  ($rt files: $ri / $re / $rs)"
             } else { "" }
 
             $treeLines = @()
@@ -598,7 +599,7 @@ try {
             $treeLines += "Folder ID: $FolderId"
             $treeLines += "Folder:    $rootFolderName$rootAnnotation"
             $treeLines += ""
-            $treeLines += "Legend: owned internal / owned external / shared external"
+            $treeLines += "Legend: # files (owned internal / owned external / shared external)"
             $treeLines += ""
 
             foreach ($row in $summaryData) {
@@ -616,8 +617,9 @@ try {
                 $internal = $row.TotalFiles - $row.ExternallyOwned
                 $external = $row.ExternallyOwned
                 $shared   = $row.SharedExternally
+                $total    = $row.TotalFiles
 
-                $treeLines += "$indent- $name  ($internal / $external / $shared)"
+                $treeLines += "$indent- $name  ($total files: $internal / $external / $shared)"
             }
 
             $treeLines | Out-File -FilePath $folderTreeTxt -Encoding UTF8
