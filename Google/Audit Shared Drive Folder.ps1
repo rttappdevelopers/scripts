@@ -325,6 +325,7 @@ if (-not (Test-Path $OutputDir)) {
 $diskUsageCsv  = Join-Path $OutputDir "DiskUsage.csv"
 $fileDetailCsv = Join-Path $OutputDir "FileDetails.csv"
 $summaryCsv    = Join-Path $OutputDir "Summary.csv"
+$folderTreeTxt = Join-Path $OutputDir "FolderTree.txt"
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  Google Drive Folder Audit" -ForegroundColor Cyan
@@ -539,6 +540,44 @@ try {
             $summaryData = $summary.Values | Sort-Object FolderPath
             $summaryData | Export-Csv -Path $summaryCsv -NoTypeInformation -Encoding UTF8
             Write-Host "  Saved $($summaryData.Count) folder summaries to Summary.csv" -ForegroundColor Green
+
+            # -- Build folder tree view -------------------------------------------
+            # Produces a human-readable indented tree of every folder with file
+            # counts showing internal vs. external ownership at a glance.
+            # Format per line:
+            #   [indent] FolderName  (N files: X internal, Y external [Z shared externally])
+            # The "shared externally" annotation only appears when > 0, to keep
+            # clean folders uncluttered.
+            $treeLines = @()
+            $treeLines += "Google Drive Folder Ownership Tree"
+            $treeLines += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+            $treeLines += "Domain:    $Domain"
+            $treeLines += "Folder ID: $FolderId"
+            $treeLines += ""
+            $treeLines += "Legend: (files: internal / external owned) [+N shared externally]"
+            $treeLines += ""
+
+            foreach ($row in $summaryData) {
+                # Depth is determined by the number of '/' separators in the path.
+                $depth  = ($row.FolderPath -split "/").Count - 1
+                $indent = "  " * $depth
+                $name   = ($row.FolderPath -split "/")[-1]
+
+                $internal = $row.TotalFiles - $row.ExternallyOwned
+                $external = $row.ExternallyOwned
+                $shared   = $row.SharedExternally
+
+                $annotation = "($($row.TotalFiles) files: $internal internal, $external external)"
+                if ($shared -gt 0) {
+                    $annotation += " [+$shared shared externally]"
+                }
+
+                $treeLines += "$indent$name  $annotation"
+            }
+
+            $treeLines | Out-File -FilePath $folderTreeTxt -Encoding UTF8
+            Write-Host "  Saved folder tree to FolderTree.txt" -ForegroundColor Green
+
         }   # end if (-not $pathCol) ... else
         }   # end if (-not $files) ... else
     } else {
@@ -572,6 +611,12 @@ if (Test-Path $summaryCsv) {
     Write-Host "  Summary.csv      - Per-folder external ownership and sharing counts" -ForegroundColor Green
 } else {
     Write-Host "  Summary.csv      - NOT GENERATED" -ForegroundColor Red
+}
+
+if (Test-Path $folderTreeTxt) {
+    Write-Host "  FolderTree.txt   - Indented folder tree with internal/external ownership counts" -ForegroundColor Green
+} else {
+    Write-Host "  FolderTree.txt   - NOT GENERATED" -ForegroundColor Red
 }
 
 Write-Host ""
