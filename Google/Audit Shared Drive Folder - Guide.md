@@ -72,7 +72,7 @@ The script will prompt for:
 
 ```powershell
 # By folder name (will search and prompt if multiple matches)
-.\"Audit Shared Drive Folder.ps1" -UserEmail admin@contoso.com -FolderName "Active Members" -Domain contoso.com
+."Audit Shared Drive Folder.ps1" -UserEmail admin@contoso.com -FolderName "Shared Documents" -Domain contoso.com
 
 # By folder ID (unambiguous - ID from the Drive URL)
 .\"Audit Shared Drive Folder.ps1" -UserEmail admin@contoso.com -FolderId "1A2B3C4D5E6F" -Domain contoso.com
@@ -158,9 +158,9 @@ All files are written to the same output directory. The run banner at the end of
 
 ### Summary.csv
 
-**Purpose:** Start here. One row per top-level (depth-0) folder - the "A-E: 78 member folders" view. Gives a quick overview to scope work: how many member folders are in each group, how large is each group, and how much external ownership or sharing risk does each carry across the entire subtree. Useful for migration scoping, security reviews, and identifying which groups warrant closer attention.
+**Purpose:** Start here. One row per top-level (depth-0) folder. Gives a quick overview to scope work: how many subfolders are in each top-level folder, how large is each, and how much external ownership or sharing risk does each carry across the entire subtree. Useful for migration scoping, security reviews, and identifying which areas warrant closer attention.
 
-In the Members shared drive context, depth-0 folders are the alphabetical group folders (A-E, F-J, K-O, P-T, U-Z). Each member organization lives one level below.
+Depth-0 folders are the immediate children of the root folder you are auditing. The structure will vary by customer - they may be alphabetical groups, departments, project categories, or any other top-level organizing scheme.
 
 **One row per depth-0 folder**, sorted alphabetically by name.
 
@@ -170,15 +170,15 @@ In the Members shared drive context, depth-0 folders are the alphabetical group 
 
 | Column | Source | What it means |
 |---|---|---|
-| `Group` | GAM | Folder name (e.g. "A-E", "F-J") |
-| `MemberFolders` | GAM (authoritative) | Direct subfolders immediately inside this group folder - i.e. the number of member organizations in this group |
+| `Group` | GAM | Name of the top-level folder |
+| `MemberFolders` | GAM (authoritative) | Direct subfolders immediately inside this top-level folder |
 | `TotalFolders` | GAM | All subfolders at any depth below this group folder (recursive) |
 | `TotalFiles` | GAM | All files at any depth below this group folder (recursive) |
 | `TotalFileSizeBytes` | GAM | Bytes of all files at any depth (recursive, uploaded files only - see Key Concepts) |
 | `TotalOwnedExternal` | Derived | Files with external owners **anywhere in the subtree** (all member folders combined) |
 | `TotalSharedExternal` | Derived | Files shared externally **anywhere in the subtree** (all member folders combined) |
 
-`TotalOwnedExternal` and `TotalSharedExternal` are summed from every subfolder under the group using ownership data derived from FileDetails.csv. Use these to compare risk levels across groups at a glance. For per-member folder detail, use FolderDetails.csv filtered by the group folder path. For the specific files driving these numbers, use FileDetails.csv.
+`TotalOwnedExternal` and `TotalSharedExternal` are summed from every subfolder under the top-level folder using ownership data derived from FileDetails.csv. Use these to compare risk levels across top-level folders at a glance. For per-subfolder detail, use FolderDetails.csv filtered by the top-level folder path. For the specific files driving these numbers, use FileDetails.csv.
 
 ---
 
@@ -318,13 +318,13 @@ A file can be internally owned and externally shared (common), or externally own
 
 ### Answering common planning questions
 
-**"How many member folders are in each group?"**
-- Open `Summary.csv` - the `MemberFolders` column is the member count per group.
+**"How many subfolders are in each top-level folder?"**
+- Open `Summary.csv` - the `MemberFolders` column is the direct subfolder count per top-level folder.
 
-**"Which groups have the most data?"**
+**"Which top-level folders have the most data?"**
 - Open `Summary.csv`, sort by `TotalFileSizeBytes` descending.
 
-**"Which groups have the most external ownership or sharing risk?"**
+**"Which top-level folders have the most external ownership or sharing risk?"**
 - Open `Summary.csv`, sort by `TotalOwnedExternal` or `TotalSharedExternal` descending.
 
 **"Which individual folders have the most external ownership risk?"**
@@ -336,7 +336,7 @@ A file can be internally owned and externally shared (common), or externally own
 **"Is external sharing concentrated in a few folders or spread everywhere?"**
 - Open `FolderDetails.csv`, sort by `SharedExternal` descending.
 
-**"What is the total external risk across an entire group?"**
+**"What is the total external risk across an entire top-level folder?"**
 - Open `Summary.csv` - `TotalOwnedExternal` and `TotalSharedExternal` are already summed across every folder in the subtree.
 
 **"I see a folder with high SharedExternal - what's actually shared?"**
@@ -346,7 +346,7 @@ A file can be internally owned and externally shared (common), or externally own
 
 The annotation on each row is: `(DirectFolders / DirectFiles / OwnedInternal / OwnedExternal / SharedExternal)`
 
-Example: `- AACSB International  (3 / 12 / 10 / 2 / 1)`
+Example: `- Example Subfolder  (3 / 12 / 10 / 2 / 1)`
 - 3 subfolders directly inside the folder
 - 12 files directly inside the folder
 - 10 of those files are internally owned
