@@ -527,8 +527,8 @@ try {
             #
             # Also capture $rootPath (the depth -1 row's path). GAM sometimes prefixes
             # file paths with parent segments from the shared drive hierarchy that do not
-            # appear in diskusage output (e.g. 'Active Members - A - E/AACSB International/...')
-            # while diskusage paths start at the audited folder ('AACSB International/...').
+            # appear in diskusage output (e.g. 'Shared Drive Name/Subfolder/...')
+            # while diskusage paths start at the audited folder ('Subfolder/...').
             # We use $rootPath to strip that extra prefix inside the file-processing loop.
             $knownFolderPaths = @()
             $rootPath = $null
