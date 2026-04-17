@@ -487,10 +487,12 @@ try {
                 # Create an entry for this folder path the first time we see it.
                 if (-not $summary.ContainsKey($folderPath)) {
                     $summary[$folderPath] = [PSCustomObject]@{
-                        FolderPath       = $folderPath
-                        TotalFiles       = 0
-                        ExternallyOwned  = 0
-                        SharedExternally = 0
+                        FolderPath        = $folderPath
+                        TotalFiles        = 0
+                        ExternallyOwned   = 0
+                        SharedExternally  = 0
+                        SharedWithGroups  = 0
+                        SharedWithUsers   = 0
                     }
                 }
 
@@ -510,19 +512,23 @@ try {
                 # A file is flagged SharedExternally if any single permission is
                 # for an outside email, an outside domain, or type 'anyone'
                 # (public / anyone-with-the-link access).
+                # SharedWithGroups counts files with at least one group permission.
+                # SharedWithUsers counts files with at least one specific-user permission.
                 $isSharedExternally = $false
+                $isSharedWithGroup  = $false
+                $isSharedWithUser   = $false
                 foreach ($col in $permCols) {
                     $val = $file.($col.Name)
                     if (-not $val) { continue }
 
-                    if ($col.Name -match "emailaddress") {
-                        # A specific person outside the domain has been granted access.
+                    if ($col.Name -match "\.type$") {
+                        # 'anyone' = public link; 'group' = Google Group; 'user' = specific user.
+                        if ($val -eq "anyone")       { $isSharedExternally = $true }
+                        elseif ($val -eq "group")    { $isSharedWithGroup  = $true }
+                        elseif ($val -eq "user")     { $isSharedWithUser   = $true }
+                    } elseif ($col.Name -match "emailaddress") {
+                        # A specific person or group outside the domain has been granted access.
                         if ($val -and $val -notmatch [regex]::Escape($Domain)) {
-                            $isSharedExternally = $true
-                        }
-                    } elseif ($col.Name -match "\.type$") {
-                        # type 'anyone' = public link (no sign-in required or anyone signed in).
-                        if ($val -eq "anyone") {
                             $isSharedExternally = $true
                         }
                     } elseif ($col.Name -match "\.domain$") {
@@ -532,16 +538,33 @@ try {
                         }
                     }
                 }
-                if ($isSharedExternally) {
-                    $entry.SharedExternally++
-                }
+                if ($isSharedExternally) { $entry.SharedExternally++ }
+                if ($isSharedWithGroup)  { $entry.SharedWithGroups++ }
+                if ($isSharedWithUser)   { $entry.SharedWithUsers++ }
             }
 
             $summaryData = $summary.Values | Sort-Object FolderPath
             $summaryData | Export-Csv -Path $summaryCsv -NoTypeInformation -Encoding UTF8
             Write-Host "  Saved $($summaryData.Count) folder summaries to Summary.csv" -ForegroundColor Green
 
-            # -- Build folder tree view -------------------------------------------
+            # -- Enrich DiskUsage.csv with ownership and sharing columns ----------
+            # Join the per-folder ownership/sharing counts (derived from FileDetails.csv)
+            # back into DiskUsage.csv so a migration engineer has all metrics in one place.
+            # Folders that contain no files get zeroes for all new columns.
+            if (Test-Path $diskUsageCsv) {
+                $diskRows = Import-Csv $diskUsageCsv
+                $enrichedCsv = foreach ($dRow in $diskRows) {
+                    $s = if ($summary.ContainsKey($dRow.path)) { $summary[$dRow.path] } else { $null }
+                    $dRow | Select-Object *,
+                        @{ N = 'OwnedInternal';   E = { if ($s) { $s.TotalFiles - $s.ExternallyOwned } else { 0 } } },
+                        @{ N = 'OwnedExternal';   E = { if ($s) { $s.ExternallyOwned } else { 0 } } },
+                        @{ N = 'SharedExternal';  E = { if ($s) { $s.SharedExternally } else { 0 } } },
+                        @{ N = 'SharedWithGroups';E = { if ($s) { $s.SharedWithGroups } else { 0 } } },
+                        @{ N = 'SharedWithUsers'; E = { if ($s) { $s.SharedWithUsers } else { 0 } } }
+                }
+                $enrichedCsv | Export-Csv -Path $diskUsageCsv -NoTypeInformation -Encoding UTF8
+                Write-Host "  Enriched DiskUsage.csv with ownership and sharing columns" -ForegroundColor Green
+            }
             # Produces a human-readable indented tree of every folder with file
             # counts showing internal vs. external ownership at a glance.
             # Format per line:
