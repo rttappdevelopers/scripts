@@ -866,7 +866,7 @@ try {
                     }
                     $summaryRows += [PSCustomObject]@{
                         Group               = $d0Row.name
-                        MemberFolders       = if ($d0Row.PSObject.Properties.Name -contains 'DirectFolders') { [int]$d0Row.DirectFolders } else { [int]$d0Row.directFolderCount }
+                        DirectFolders       = if ($d0Row.PSObject.Properties.Name -contains 'DirectFolders') { [int]$d0Row.DirectFolders } else { [int]$d0Row.directFolderCount }
                         TotalFolders        = [int]$d0Row.totalFolderCount
                         TotalFiles          = [int]$d0Row.totalFileCount
                         TotalFileSizeBytes  = [long]$d0Row.totalFileSize
@@ -959,7 +959,7 @@ Write-Host "  SharedWithUsers    - Files shared with at least one specific user"
 Write-Host ""
 Write-Host "Summary.csv columns (one row per top-level / depth-0 folder):" -ForegroundColor DarkGray
 Write-Host "  Group               - Folder name" -ForegroundColor DarkGray
-Write-Host "  MemberFolders       - Direct subfolders (immediate children)" -ForegroundColor DarkGray
+Write-Host "  DirectFolders        - Direct subfolders (immediate children)" -ForegroundColor DarkGray
 Write-Host "  TotalFolders        - All subfolders at any depth (recursive)" -ForegroundColor DarkGray
 Write-Host "  TotalFiles          - All files at any depth (recursive)" -ForegroundColor DarkGray
 Write-Host "  TotalFileSizeBytes  - Size of all files at any depth, bytes (uploaded files only)" -ForegroundColor DarkGray
