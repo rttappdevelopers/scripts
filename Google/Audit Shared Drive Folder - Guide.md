@@ -262,6 +262,15 @@ Permission slots are numbered 0, 1, 2... with separate columns per property per 
 
 All five numbers are **direct counts** - they count only files/folders immediately inside that folder, not descendants.
 
+Example: `- Example Subfolder  (3 / 12 / 10 / 2 / 1)`
+- 3 subfolders directly inside the folder
+- 12 files directly inside the folder
+- 10 of those files are internally owned
+- 2 are externally owned
+- 1 is shared externally
+
+Descendant folders have their own rows with their own counts. Add up rows manually or open FolderDetails.csv filtered by path for totals.
+
 ---
 
 ## Key Concepts
@@ -341,19 +350,6 @@ A file can be internally owned and externally shared (common), or externally own
 
 **"I see a folder with high SharedExternal - what's actually shared?"**
 - Cross-reference with `FileDetails.csv`. Filter by the folder path in the `path.0` column. Look at the `permissions.N.type` and `permissions.N.emailAddress` columns to see exactly who has access.
-
-### Reading the FolderTree.txt
-
-The annotation on each row is: `(DirectFolders / DirectFiles / OwnedInternal / OwnedExternal / SharedExternal)`
-
-Example: `- Example Subfolder  (3 / 12 / 10 / 2 / 1)`
-- 3 subfolders directly inside the folder
-- 12 files directly inside the folder
-- 10 of those files are internally owned
-- 2 are externally owned
-- 1 is shared externally
-
-Descendant folders have their own rows with their own counts. Add up rows manually or open FolderDetails.csv filtered by path for totals.
 
 ---
 
