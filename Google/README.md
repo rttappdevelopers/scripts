@@ -254,7 +254,9 @@ gam user user@domain.com print filetree select drivefilename "Folder Name" field
 | Script | Purpose |
 |---|---|
 | [`Initialize GAM.ps1`](Initialize%20GAM.ps1) | One-time setup of GAM7 for a Google Workspace tenant: installs GAM, sets up directories and environment variables, creates a GCP project, authorizes OAuth and domain-wide delegation, and saves the customer config |
-| [`Audit Shared Drive Folder.ps1`](Audit%20Shared%20Drive%20Folder.ps1) | Audits a Google Drive folder for subfolder counts, file counts, external ownership, external sharing, and total sizes — outputs CSV reports for migration planning |
+| [`Audit Shared Drive Folder.ps1`](Audit%20Shared%20Drive%20Folder.ps1) | Audits a Google Drive folder for subfolder counts, file counts, external ownership, external sharing, and total sizes - outputs six CSV/text reports for migration planning |
+
+See [Audit Shared Drive Folder - Guide.md](Audit%20Shared%20Drive%20Folder%20-%20Guide.md) for full usage instructions, a complete column reference for each output file, and data interpretation guidance.
 
 ---
 
