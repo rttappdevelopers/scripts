@@ -13,9 +13,9 @@ Reference for running the audit script and interpreting each output file. Intend
   - [Examples](#examples)
 - [What the Script Does](#what-the-script-does)
 - [Output Files](#output-files)
+  - [Summary.csv](#summarycsv)
   - [FolderDetails.csv](#folderdetailscsv)
   - [FileDetails.csv](#filedetailscsv)
-  - [Summary.csv](#summarycsv)
   - [FolderTree.txt](#foldertreetxt)
 - [Key Concepts](#key-concepts)
   - [Internal vs External](#internal-vs-external)
@@ -156,6 +156,32 @@ All files are written to the same output directory. The run banner at the end of
 
 ---
 
+### Summary.csv
+
+**Purpose:** Start here. One row per top-level (depth-0) folder - the "A-E: 78 member folders" view. Gives the project engineer a quick overview to scope migrations: how many member folders are in each group, how large is each group, and how much external ownership or sharing risk does each carry across the entire subtree.
+
+In the Members shared drive context, depth-0 folders are the alphabetical group folders (A-E, F-J, K-O, P-T, U-Z). Each member organization lives one level below.
+
+**One row per depth-0 folder**, sorted alphabetically by name.
+
+> Requires FolderDetails.csv to be generated first. If FolderDetails.csv was not produced, Summary.csv will not be generated.
+
+#### Columns
+
+| Column | Source | What it means |
+|---|---|---|
+| `Group` | GAM | Folder name (e.g. "A-E", "F-J") |
+| `MemberFolders` | GAM (authoritative) | Direct subfolders immediately inside this group folder - i.e. the number of member organizations in this group |
+| `TotalFolders` | GAM | All subfolders at any depth below this group folder (recursive) |
+| `TotalFiles` | GAM | All files at any depth below this group folder (recursive) |
+| `TotalFileSizeBytes` | GAM | Bytes of all files at any depth (recursive, uploaded files only - see Key Concepts) |
+| `TotalOwnedExternal` | Derived | Files with external owners **anywhere in the subtree** (all member folders combined) |
+| `TotalSharedExternal` | Derived | Files shared externally **anywhere in the subtree** (all member folders combined) |
+
+`TotalOwnedExternal` and `TotalSharedExternal` are summed from every subfolder under the group using ownership data derived from FileDetails.csv. Use these to compare risk levels across groups at a glance. For per-member folder detail, use FolderDetails.csv filtered by the group folder path. For the specific files driving these numbers, use FileDetails.csv.
+
+---
+
 ### FolderDetails.csv
 
 **Purpose:** Primary reference for data volume and migration risk per folder. Combines GAM's authoritative folder/file/size data with script-derived ownership and sharing counts in a single flat file.
@@ -223,32 +249,6 @@ These columns count files that are **directly in this folder** - they do not inc
 Permission slots are numbered 0, 1, 2... with separate columns per property per slot. The number of slots varies by file. A file with three share recipients will have columns `permissions.0.*`, `permissions.1.*`, `permissions.2.*`.
 
 **This is the file to open when you need to answer:** "Which specific files are externally owned or shared in this folder?"
-
----
-
-### Summary.csv
-
-**Purpose:** One row per top-level (depth-0) folder - the "A-E: 78 member folders" view. Gives the project engineer a quick overview to scope migrations: how many member folders are in each group, how large is each group, and how much external ownership or sharing risk does each carry across the entire subtree.
-
-In the Members shared drive context, depth-0 folders are the alphabetical group folders (A-E, F-J, K-O, P-T, U-Z). Each member organization lives one level below.
-
-**One row per depth-0 folder**, sorted alphabetically by name.
-
-> Requires FolderDetails.csv to be generated first. If FolderDetails.csv was not produced, Summary.csv will not be generated.
-
-#### Columns
-
-| Column | Source | What it means |
-|---|---|---|
-| `Group` | GAM | Folder name (e.g. "A-E", "F-J") |
-| `MemberFolders` | GAM (authoritative) | Direct subfolders immediately inside this group folder - i.e. the number of member organizations in this group |
-| `TotalFolders` | GAM | All subfolders at any depth below this group folder (recursive) |
-| `TotalFiles` | GAM | All files at any depth below this group folder (recursive) |
-| `TotalFileSizeBytes` | GAM | Bytes of all files at any depth (recursive, uploaded files only - see Key Concepts) |
-| `TotalOwnedExternal` | Derived | Files with external owners **anywhere in the subtree** (all member folders combined) |
-| `TotalSharedExternal` | Derived | Files shared externally **anywhere in the subtree** (all member folders combined) |
-
-`TotalOwnedExternal` and `TotalSharedExternal` are summed from all per-folder ownership/sharing data across every subfolder under the group. Use these to compare risk levels across groups at a glance. For per-member detail, open FolderDetails.csv and filter by the group folder path.
 
 ---
 
