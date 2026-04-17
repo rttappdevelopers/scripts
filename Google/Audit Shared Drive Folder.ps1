@@ -582,9 +582,12 @@ try {
 
             foreach ($row in $summaryData) {
                 # Depth is determined by the number of '/' separators in the path.
-                $depth  = ($row.FolderPath -split "/").Count - 1
+                # Trim any leading slash first — GAM sometimes prefixes paths with '/'
+                # which would add a spurious empty segment and shift everything one level deep.
+                $trimmedPath = $row.FolderPath.TrimStart('/')
+                $depth  = ($trimmedPath -split "/").Count - 1
                 $indent = "`t" * $depth
-                $name   = ($row.FolderPath -split "/")[-1]
+                $name   = ($trimmedPath -split "/")[-1]
 
                 $internal = $row.TotalFiles - $row.ExternallyOwned
                 $external = $row.ExternallyOwned
