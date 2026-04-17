@@ -565,29 +565,41 @@ try {
                 $enrichedCsv | Export-Csv -Path $diskUsageCsv -NoTypeInformation -Encoding UTF8
                 Write-Host "  Enriched DiskUsage.csv with ownership and sharing columns" -ForegroundColor Green
             }
-            # Produces a human-readable indented tree of every folder with file
-            # counts showing internal vs. external ownership at a glance.
-            # Format per line:
-            #   [indent] FolderName  (N files: X internal, Y external [Z shared externally])
-            # The "shared externally" annotation only appears when > 0, to keep
-            # clean folders uncluttered.
+            # -- Build folder tree view -------------------------------------------
+            # The root folder (shallowest entry in summaryData) goes into the header
+            # as "Folder:" rather than being a row in the tree. All children are then
+            # normalized so the root's immediate children start at depth 0.
+            $depths = $summaryData | ForEach-Object {
+                ($_.FolderPath.TrimStart('/') -split '/').Count - 1
+            }
+            $minDepth = ($depths | Measure-Object -Minimum).Minimum
+
+            $rootEntry = $summaryData | Where-Object {
+                ($_.FolderPath.TrimStart('/') -split '/').Count - 1 -eq $minDepth
+            } | Select-Object -First 1
+            $rootFolderName = if ($rootEntry) { ($rootEntry.FolderPath.TrimStart('/') -split '/')[-1] } else { $FolderId }
+
             $treeLines = @()
             $treeLines += "Google Drive Folder Ownership Tree"
             $treeLines += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
             $treeLines += "Domain:    $Domain"
             $treeLines += "Folder ID: $FolderId"
+            $treeLines += "Folder:    $rootFolderName"
             $treeLines += ""
             $treeLines += "Legend: owned internal / owned external / shared external"
             $treeLines += ""
 
             foreach ($row in $summaryData) {
-                # Depth is determined by the number of '/' separators in the path.
-                # Trim any leading slash first — GAM sometimes prefixes paths with '/'
-                # which would add a spurious empty segment and shift everything one level deep.
                 $trimmedPath = $row.FolderPath.TrimStart('/')
-                $depth  = ($trimmedPath -split "/").Count - 1
-                $indent = "`t" * $depth
-                $name   = ($trimmedPath -split "/")[-1]
+                $depth = ($trimmedPath -split '/').Count - 1
+
+                # Skip the root entry — it is already shown in the header above.
+                if ($depth -eq $minDepth) { continue }
+
+                # Normalize so root's immediate children start at depth 0.
+                $normalizedDepth = $depth - $minDepth - 1
+                $indent = "`t" * $normalizedDepth
+                $name   = ($trimmedPath -split '/')[-1]
 
                 $internal = $row.TotalFiles - $row.ExternallyOwned
                 $external = $row.ExternallyOwned
