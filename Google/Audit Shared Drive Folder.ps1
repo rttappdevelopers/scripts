@@ -563,6 +563,11 @@ try {
                         @{ N = 'SharedWithUsers'; E = { if ($s) { $s.SharedWithUsers } else { 0 } } }
                 }
                 $enrichedCsv | Export-Csv -Path $diskUsageCsv -NoTypeInformation -Encoding UTF8
+                # Reorder so 'path' is the last column — easier to read in Excel when
+                # the metrics columns are adjacent to the folder name columns.
+                $colOrder    = @($enrichedCsv[0].PSObject.Properties.Name | Where-Object { $_ -ne 'path' }) + 'path'
+                $enrichedCsv = $enrichedCsv | Select-Object $colOrder
+                $enrichedCsv | Export-Csv -Path $diskUsageCsv -NoTypeInformation -Encoding UTF8
                 Write-Host "  Enriched DiskUsage.csv with ownership and sharing columns" -ForegroundColor Green
             }
             # -- Build folder tree view -------------------------------------------
