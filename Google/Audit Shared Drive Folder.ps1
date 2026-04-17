@@ -467,6 +467,20 @@ try {
             $permCols = $files | Get-Member -MemberType NoteProperty |
                 Where-Object { $_.Name -match "permissions\.\d+\.(emailaddress|domain|type)" }
 
+            # Build a lookup of known folder paths from DiskUsage.csv (if available),
+            # sorted longest-first so greedy prefix matching works correctly even when
+            # folder names contain a literal '/' character (e.g. "Contracts/Proposals").
+            # Without this, splitting the file path on '/' would misidentify the folder.
+            $knownFolderPaths = @()
+            if (Test-Path $diskUsageCsv) {
+                $knownFolderPaths = @(
+                    Import-Csv $diskUsageCsv |
+                        Where-Object { $_.path -and $_.path -ne 'Trash' } |
+                        Select-Object -ExpandProperty path |
+                        Sort-Object { $_.Length } -Descending
+                )
+            }
+
             # Use a hashtable keyed by folder path to accumulate per-folder counts.
             $summary = @{}
 
@@ -479,14 +493,24 @@ try {
                 # which GAM writes without a leading slash.
                 $filePath = $filePath.TrimStart('/')
 
-                # Derive the containing folder path by dropping the last path segment
-                # (the file name itself). Files at the root of the audited folder
-                # have no parent segment, so we use the full path as the key.
-                $pathParts = $filePath -split "/"
-                if ($pathParts.Count -gt 1) {
-                    $folderPath = ($pathParts[0..($pathParts.Count - 2)]) -join "/"
-                } else {
-                    $folderPath = $filePath
+                # Derive the containing folder path using longest-prefix matching
+                # against the known folder list from DiskUsage.csv. This correctly
+                # handles folder names that contain a literal '/' (e.g. "Contracts/Proposals")
+                # which would be ambiguous if we simply split on '/' and dropped the last segment.
+                $folderPath = $null
+                foreach ($knownPath in $knownFolderPaths) {
+                    if ($filePath.StartsWith("$knownPath/")) {
+                        $folderPath = $knownPath
+                        break
+                    }
+                }
+                # Fallback for files not matched (e.g. DiskUsage.csv unavailable):
+                # split on '/' and drop the last segment as before.
+                if (-not $folderPath) {
+                    $pathParts = $filePath -split "/"
+                    $folderPath = if ($pathParts.Count -gt 1) {
+                        ($pathParts[0..($pathParts.Count - 2)]) -join "/"
+                    } else { $filePath }
                 }
 
                 # Create an entry for this folder path the first time we see it.
@@ -576,55 +600,71 @@ try {
                 Write-Host "  Enriched DiskUsage.csv with ownership and sharing columns" -ForegroundColor Green
             }
             # -- Build folder tree view -------------------------------------------
-            # The root folder (shallowest entry in summaryData) goes into the header
-            # as "Folder:" rather than being a row in the tree. All children are then
-            # normalized so the root's immediate children start at depth 0.
-            $depths = $summaryData | ForEach-Object {
-                ($_.FolderPath.TrimStart('/') -split '/').Count - 1
-            }
-            $minDepth = ($depths | Measure-Object -Minimum).Minimum
-
-            $rootEntry = $summaryData | Where-Object {
-                ($_.FolderPath.TrimStart('/') -split '/').Count - 1 -eq $minDepth
-            } | Select-Object -First 1
-            $rootFolderName = if ($rootEntry) { ($rootEntry.FolderPath.TrimStart('/') -split '/')[-1] } else { $FolderId }
-
-            $rootAnnotation = if ($rootEntry) {
-                $ri = $rootEntry.TotalFiles - $rootEntry.ExternallyOwned
-                $re = $rootEntry.ExternallyOwned
-                $rs = $rootEntry.SharedExternally
-                $rt = $rootEntry.TotalFiles
-                "  ($rt / $ri / $re / $rs)"
-            } else { "" }
-
+            # Drive the tree from DiskUsage.csv rows so every folder is represented,
+            # including empty ones. GAM's 'depth' column is used for indentation
+            # so slash characters in folder names never affect the hierarchy.
+            # The root folder (depth -1 per GAM) goes into the header.
             $treeLines = @()
-            $treeLines += "Google Drive Folder Ownership Tree"
-            $treeLines += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-            $treeLines += "Domain:    $Domain"
-            $treeLines += "Folder ID: $FolderId"
-            $treeLines += "Folder:    $rootFolderName$rootAnnotation"
-            $treeLines += ""
-            $treeLines += "Legend: # files / owned internal / owned external / shared external"
-            $treeLines += ""
 
-            foreach ($row in $summaryData) {
-                $trimmedPath = $row.FolderPath.TrimStart('/')
-                $depth = ($trimmedPath -split '/').Count - 1
+            if (Test-Path $diskUsageCsv) {
+                $diskRowsForTree = Import-Csv $diskUsageCsv |
+                    Where-Object { $_.path -and $_.path -ne 'Trash' }
 
-                # Skip the root entry — it is already shown in the header above.
-                if ($depth -eq $minDepth) { continue }
+                # Root is depth -1 in GAM's output.
+                $rootRow = $diskRowsForTree | Where-Object { [int]$_.depth -eq -1 } | Select-Object -First 1
+                $rootName = if ($rootRow) { $rootRow.name } else { $FolderId }
 
-                # Normalize so root's immediate children start at depth 0.
-                $normalizedDepth = $depth - $minDepth - 1
-                $indent = "`t" * $normalizedDepth
-                $name   = ($trimmedPath -split '/')[-1]
+                $rootAnnotation = ""
+                if ($rootRow -and $summary.ContainsKey($rootRow.path)) {
+                    $s = $summary[$rootRow.path]
+                    $rt = $s.TotalFiles; $ri = $rt - $s.ExternallyOwned
+                    $re = $s.ExternallyOwned; $rs = $s.SharedExternally
+                    $rootAnnotation = "  ($rt / $ri / $re / $rs)"
+                }
 
-                $internal = $row.TotalFiles - $row.ExternallyOwned
-                $external = $row.ExternallyOwned
-                $shared   = $row.SharedExternally
-                $total    = $row.TotalFiles
+                $treeLines += "Google Drive Folder Ownership Tree"
+                $treeLines += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+                $treeLines += "Domain:    $Domain"
+                $treeLines += "Folder ID: $FolderId"
+                $treeLines += "Folder:    $rootName$rootAnnotation"
+                $treeLines += ""
+                $treeLines += "Legend: # files / owned internal / owned external / shared external"
+                $treeLines += ""
 
-                $treeLines += "$indent- $name  ($total / $internal / $external / $shared)"
+                # Children start at depth 0; normalize so they display at indent 0.
+                foreach ($dRow in ($diskRowsForTree | Where-Object { [int]$_.depth -ge 0 } | Sort-Object { [int]$_.depth }, path)) {
+                    $d      = [int]$dRow.depth
+                    $indent = "`t" * $d
+                    $name   = $dRow.name
+
+                    $s = if ($summary.ContainsKey($dRow.path)) { $summary[$dRow.path] } else { $null }
+                    $total    = if ($s) { $s.TotalFiles } else { 0 }
+                    $internal = if ($s) { $s.TotalFiles - $s.ExternallyOwned } else { 0 }
+                    $external = if ($s) { $s.ExternallyOwned } else { 0 }
+                    $shared   = if ($s) { $s.SharedExternally } else { 0 }
+
+                    $treeLines += "$indent- $name  ($total / $internal / $external / $shared)"
+                }
+            } else {
+                # DiskUsage.csv unavailable - fall back to summary-driven tree as before.
+                $treeLines += "Google Drive Folder Ownership Tree"
+                $treeLines += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+                $treeLines += "Domain:    $Domain"
+                $treeLines += "Folder ID: $FolderId"
+                $treeLines += ""
+                $treeLines += "Legend: # files / owned internal / owned external / shared external"
+                $treeLines += "(Note: DiskUsage.csv unavailable - empty folders not shown)"
+                $treeLines += ""
+
+                foreach ($row in ($summary.Values | Sort-Object FolderPath)) {
+                    $trimmedPath     = $row.FolderPath.TrimStart('/')
+                    $depth           = ($trimmedPath -split '/').Count - 1
+                    $indent          = "`t" * $depth
+                    $name            = ($trimmedPath -split '/')[-1]
+                    $total           = $row.TotalFiles
+                    $internal        = $total - $row.ExternallyOwned
+                    $treeLines += "$indent- $name  ($total / $internal / $($row.ExternallyOwned) / $($row.SharedExternally))"
+                }
             }
 
             $treeLines | Out-File -FilePath $folderTreeTxt -Encoding UTF8
