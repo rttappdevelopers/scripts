@@ -554,25 +554,20 @@ try {
             $treeLines += "Domain:    $Domain"
             $treeLines += "Folder ID: $FolderId"
             $treeLines += ""
-            $treeLines += "Legend: (files: internal / external owned) [+N shared externally]"
+            $treeLines += "Legend: owned internal / owned external / shared external"
             $treeLines += ""
 
             foreach ($row in $summaryData) {
                 # Depth is determined by the number of '/' separators in the path.
                 $depth  = ($row.FolderPath -split "/").Count - 1
-                $indent = "  " * $depth
+                $indent = "`t" * $depth
                 $name   = ($row.FolderPath -split "/")[-1]
 
                 $internal = $row.TotalFiles - $row.ExternallyOwned
                 $external = $row.ExternallyOwned
                 $shared   = $row.SharedExternally
 
-                $annotation = "($($row.TotalFiles) files: $internal internal, $external external)"
-                if ($shared -gt 0) {
-                    $annotation += " [+$shared shared externally]"
-                }
-
-                $treeLines += "$indent$name  $annotation"
+                $treeLines += "$indent- $name  ($internal / $external / $shared)"
             }
 
             $treeLines | Out-File -FilePath $folderTreeTxt -Encoding UTF8
