@@ -474,6 +474,11 @@ try {
                 $filePath = $file.$pathCol
                 if (-not $filePath) { continue }
 
+                # GAM sometimes prefixes paths with a leading slash. Trim it so
+                # the resulting folder keys match the path values in DiskUsage.csv,
+                # which GAM writes without a leading slash.
+                $filePath = $filePath.TrimStart('/')
+
                 # Derive the containing folder path by dropping the last path segment
                 # (the file name itself). Files at the root of the audited folder
                 # have no parent segment, so we use the full path as the key.
