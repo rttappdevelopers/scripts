@@ -1,6 +1,6 @@
 # Audit Shared Drive Folder - Guide
 
-Reference for running the audit script and interpreting each output file. Intended for the technician running the script and the project engineer reviewing the results.
+Reference for running the audit script and interpreting each output file. Intended for the technician running the script and any specialist, analyst, or project engineer reviewing the results.
 
 ---
 
@@ -29,7 +29,7 @@ Reference for running the audit script and interpreting each output file. Intend
 
 ## Overview
 
-`Audit Shared Drive Folder.ps1` uses [GAM7](https://github.com/GAM-team/GAM) to query the Google Drive API and produce four output files covering folder structure, file ownership, and external sharing across a Drive folder or Shared Drive. The outputs are designed for migration planning - specifically for identifying which folders contain files with external ownership or sharing that require attention before or during a migration.
+`Audit Shared Drive Folder.ps1` uses [GAM7](https://github.com/GAM-team/GAM) to query the Google Drive API and produce four output files covering folder structure, file ownership, and external sharing across a Drive folder or Shared Drive. The outputs support multiple use cases: migration planning, security audits, and general Drive governance - anywhere you need to understand what is in a folder, who owns it, and who it is shared with.
 
 The script produces two types of data:
 
@@ -158,7 +158,7 @@ All files are written to the same output directory. The run banner at the end of
 
 ### Summary.csv
 
-**Purpose:** Start here. One row per top-level (depth-0) folder - the "A-E: 78 member folders" view. Gives the project engineer a quick overview to scope migrations: how many member folders are in each group, how large is each group, and how much external ownership or sharing risk does each carry across the entire subtree.
+**Purpose:** Start here. One row per top-level (depth-0) folder - the "A-E: 78 member folders" view. Gives a quick overview to scope work: how many member folders are in each group, how large is each group, and how much external ownership or sharing risk does each carry across the entire subtree. Useful for migration scoping, security reviews, and identifying which groups warrant closer attention.
 
 In the Members shared drive context, depth-0 folders are the alphabetical group folders (A-E, F-J, K-O, P-T, U-Z). Each member organization lives one level below.
 
