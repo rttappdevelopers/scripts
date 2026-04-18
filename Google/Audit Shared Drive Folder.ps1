@@ -188,7 +188,7 @@ if ([string]::IsNullOrWhiteSpace($Domain) -and $ConfigDir) {
 # UserEmail is the account GAM impersonates via service account delegation.
 # It must be a real user in the target workspace (typically an admin).
 if ([string]::IsNullOrWhiteSpace($UserEmail)) {
-    $UserEmail = Read-Host "Enter the Google Workspace admin email (e.g., admin@yourdomain.com)"
+    $UserEmail = Read-Host "Enter the Google Workspace user email to impersonate (e.g., user@yourdomain.com)"
     if ([string]::IsNullOrWhiteSpace($UserEmail)) {
         throw "User email is required."
     }
@@ -244,6 +244,11 @@ if ([string]::IsNullOrWhiteSpace($FolderName) -and [string]::IsNullOrWhiteSpace(
                 throw "Folder ID is required."
             }
             # Accept a full Drive URL in addition to a bare ID.
+            # Detect resource keys - GAM cannot send the X-Goog-Drive-Resource-Keys
+            # header, so folders requiring a resource key will fail with 404.
+            if ($FolderId -match '[?&]resourcekey=') {
+                $ResourceKey = $true
+            }
             # Pattern: /folders/<ID> optionally followed by ? or end of string.
             if ($FolderId -match '/folders/([^/?]+)') {
                 $FolderId = $Matches[1]
@@ -255,6 +260,9 @@ if ([string]::IsNullOrWhiteSpace($FolderName) -and [string]::IsNullOrWhiteSpace(
                 throw "Shared Drive ID is required."
             }
             # Accept a full Drive URL in addition to a bare ID.
+            if ($FolderId -match '[?&]resourcekey=') {
+                $ResourceKey = $true
+            }
             if ($FolderId -match '/folders/([^/?]+)') {
                 $FolderId = $Matches[1]
             }
@@ -352,6 +360,8 @@ $fileDetailCsv   = Join-Path $OutputDir "FileDetails.csv"
 $summaryCsv      = Join-Path $OutputDir "Summary.csv"
 $folderTreeTxt   = Join-Path $OutputDir "FolderTree.txt"
 
+$auditTimer = [System.Diagnostics.Stopwatch]::StartNew()
+
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  Google Drive Folder Audit" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
@@ -360,6 +370,61 @@ Write-Host "Domain(s):  $($InternalDomains -join ', ')"
 if ($FolderName) { Write-Host "Folder:     $FolderName" }
 if ($FolderId)   { Write-Host "Folder ID:  $FolderId" }
 Write-Host "Output:     $OutputDir"
+
+# Resource keys are required by the Google Drive API for legacy link-shared
+# items (pre-September 2021 "anyone with the link" shares). The API expects
+# the key in the X-Goog-Drive-Resource-Keys HTTP header, but GAM does not
+# send this header. The folder owner can access it without a resource key.
+# Try the current user first; only prompt for a different owner if needed.
+if ($ResourceKey) {
+    Write-Host ""
+    Write-Host "WARNING: This folder URL contains a resource key." -ForegroundColor Yellow
+    Write-Host "  GAM cannot access resource key-protected folders directly." -ForegroundColor Yellow
+    Write-Host "  Verifying whether $UserEmail can access the folder..." -ForegroundColor Cyan
+
+    $verifyResult = gam user $UserEmail show fileinfo "id:$FolderId" fields "name" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        # The current user can reach the folder (likely the owner).
+        foreach ($line in $verifyResult) {
+            if ($line -match '^\s*name:\s*(.+)$') {
+                Write-Host "  Folder found: $($Matches[1].Trim())" -ForegroundColor Green
+            }
+        }
+        Write-Host "  $UserEmail has access - proceeding." -ForegroundColor Green
+    } else {
+        # Current user cannot access; ask for the owner's email.
+        Write-Host "  $UserEmail cannot access this folder." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  To find the owner: open the folder in Google Drive, click the" -ForegroundColor DarkGray
+        Write-Host "  (i) details panel, and look for the Owner field." -ForegroundColor DarkGray
+        Write-Host ""
+
+        $ownerEmail = Read-Host "Enter the folder owner's email address"
+        if ([string]::IsNullOrWhiteSpace($ownerEmail)) {
+            throw "Owner email is required for resource key-protected folders."
+        }
+
+        Write-Host ""
+        Write-Host "  Verifying access as $ownerEmail..." -ForegroundColor DarkGray
+        $verifyResult = gam user $ownerEmail show fileinfo "id:$FolderId" fields "name" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Cannot access folder as $ownerEmail. Verify the email is correct and the user owns the folder."
+        }
+
+        foreach ($line in $verifyResult) {
+            if ($line -match '^\s*name:\s*(.+)$') {
+                Write-Host "  Folder found: $($Matches[1].Trim())" -ForegroundColor Green
+            }
+        }
+
+        Write-Host "  Audit user changed from $UserEmail to $ownerEmail" -ForegroundColor Green
+        $UserEmail = $ownerEmail
+    }
+
+    # Clear the resource key flag - the verified user can access the folder.
+    $ResourceKey = $false
+    Write-Host ""
+}
 Write-Host ""
 
 # -- Step 1: Disk Usage (subfolder counts, file counts, sizes) ----------------
@@ -966,6 +1031,9 @@ Write-Host "  TotalFileSizeBytes  - Size of all files at any depth, bytes (uploa
 Write-Host "  TotalOwnedExternal  - Files with external owners anywhere in the subtree" -ForegroundColor DarkGray
 Write-Host "  TotalSharedExternal - Files shared externally anywhere in the subtree" -ForegroundColor DarkGray
 Write-Host ""
+$auditTimer.Stop()
+$elapsed = $auditTimer.Elapsed
+Write-Host ("Total runtime: {0:00}:{1:00}:{2:00}" -f [int]$elapsed.TotalHours, $elapsed.Minutes, $elapsed.Seconds) -ForegroundColor DarkGray
 Write-Host "Log saved to: $TranscriptFile" -ForegroundColor DarkGray
 
 } finally {

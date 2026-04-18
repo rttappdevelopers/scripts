@@ -4,6 +4,17 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-04-17
+
+### Google - Audit Shared Drive Folder
+- Added early detection for resource key-protected Google Drive folders (pre-September 2021 link-shared items)
+- GAM7 does not send the `X-Goog-Drive-Resource-Keys` HTTP header required by the Drive API v3 for these folders, causing all API calls to return 404 Not Found
+- When a resource key is detected, the script prompts for the folder owner's email, verifies access, and switches the impersonation target so the audit can proceed without re-running
+- Clarified the user email prompt to indicate GAM will impersonate the supplied account
+- Affects both folder ID (option 2) and Shared Drive ID (option 3) input paths
+
+---
+
 ## 2026-04-13
 
 ### Repository — Design spec and engineering principles
