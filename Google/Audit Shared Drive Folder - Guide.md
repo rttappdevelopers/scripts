@@ -12,6 +12,7 @@ Reference for running the audit script and interpreting each output file. Intend
   - [Parameters](#parameters)
   - [Examples](#examples)
 - [What the Script Does](#what-the-script-does)
+- [Runtime, Checkpointing, and Recovery](#runtime-checkpointing-and-recovery)
 - [Output Files](#output-files)
   - [Summary.csv](#summarycsv)
   - [FolderDetails.csv](#folderdetailscsv)
@@ -101,6 +102,8 @@ Any parameter not supplied on the command line will still be prompted for intera
 | `-OutputDir` | No | Directory to write output files to. Defaults to a timestamped subfolder under the current directory (`DriveAudit_yyyy-MM-dd_HHmmss`). |
 | `-ConfigBaseDir` | No | Parent directory containing per-customer GAM config subdirectories. Defaults to `C:\GAMConfig`. |
 | `-ConfigDir` | No | Full path to a specific customer GAM config directory. When provided, skips the workspace selection menu. |
+| `-Resume` | No | Continues a previous run from the last checkpoint. Subtrees already marked done in `audit.state.json` are skipped; the walk picks up from the first pending subtree. |
+| `-Restart` | No | Discards the existing checkpoint and starts over from scratch. Use when you want a clean run against the same output directory. |
 
 
 ### Examples
@@ -126,13 +129,21 @@ Any parameter not supplied on the command line will still be prompted for intera
 
 The script runs three sequential steps. Steps 1 and 2 make API calls; Step 3 is pure PowerShell post-processing.
 
-**Step 1 - Disk Usage** (`gam print diskusage`)
+**Step 1 - Enumerate top-level subtrees** (`gam print filelist`)
 
-Walks the entire folder tree and returns one row per folder with GAM's authoritative counts: direct file count, direct folder count, direct file size, total file count, total folder count, and total file size. This is the structural backbone used by FolderTree.txt and Summary.csv.
+Queries the immediate children of the target folder in a single API call. Each child folder becomes an independent unit of work tracked in `audit.state.json` with a status of `pending`, `in-progress`, `done`, or `failed`.
 
-**Step 2 - File Details** (`gam print filelist`)
+**Step 2 - Per-subtree file walk** (`gam print filelist`)
 
-Enumerates every file under the target folder with full path, owner email, size, MIME type, and permissions. This is the source of truth for all ownership and sharing classification in Step 3.
+Walks each top-level subtree independently. Rows returned by GAM are streamed directly to a per-subtree CSV in a `_subtrees/` subdirectory as they arrive - no intermediate buffering. A heartbeat line is printed every 30 seconds showing rows written and current rows-per-minute so long-running subtrees remain visible. Each subtree CSV is written atomically (`.partial` suffix during write, renamed on completion) so a partial file is never mistaken for a complete one. After each subtree finishes, its status in `audit.state.json` is updated to `done`.
+
+**Step 2.5 - Merge**
+
+Concatenates all per-subtree CSVs into `FileDetails.csv`, deduplicating rows by file ID so files appearing in more than one subtree are counted once.
+
+**Step 2.6 - Derive FolderDetails**
+
+Builds `FolderDetails.csv` entirely from `FileDetails.csv` using parent-chain traversal. Folder depth, path, and recursive file/folder/size totals are all computed locally, eliminating the separate disk-usage API walk the previous version required.
 
 **Step 3 - Ownership and Sharing Analysis**
 
@@ -144,9 +155,43 @@ Post-processes FileDetails.csv in PowerShell to:
 - Enrich FolderDetails.csv with those counts
 - Generate Summary.csv (depth-0 rollup with cumulative totals)
 
-No additional API calls are made in Step 3.
+No additional API calls are made in Steps 2.5, 2.6, or 3.
 
 A **console transcript** is automatically saved to `Documents\GAM Logs\Audit-SharedDrive_<timestamp>.txt` for every run.
+
+---
+
+## Runtime, Checkpointing, and Recovery
+
+### Expected Runtime
+
+Runtime scales with folder count, not file count. GAM walks approximately 1-3 folders per second. A tree of around 50,000 files across 8,000-10,000 folders takes roughly 1-2 hours end-to-end. Trees with fewer, deeper folders finish faster than trees with many shallow folders; the 30-second heartbeat in the console output is the most reliable way to judge actual pace for a specific drive.
+
+### Checkpoint File
+
+After each subtree completes, its status is written to `audit.state.json` in the output directory. The file tracks every top-level subtree by name and ID with a status of `pending`, `in-progress`, `done`, or `failed`. A run interrupted by a reboot, network drop, or rate-limit back-off loses at most one subtree of work.
+
+### Resuming a Run
+
+When `audit.state.json` is present and no `-Resume` or `-Restart` flag is supplied, the script prompts:
+
+```
+[Resume] Previous audit state found. Resume from checkpoint? [Y/N/Q]:
+```
+
+- **Y** - skip all `done` subtrees and continue from the first `pending` one
+- **N** - delete the existing state and start over
+- **Q** - exit without making any changes
+
+Supply `-Resume` or `-Restart` on the command line to skip the prompt:
+
+```powershell
+# Resume from checkpoint
+."Audit Shared Drive Folder.ps1" -UserEmail admin@contoso.com -FolderId "1A2B3C4D5E6F" -Domain contoso.com -OutputDir "C:\Audits\MyRun" -Resume
+
+# Start over, discarding previous results
+."Audit Shared Drive Folder.ps1" -UserEmail admin@contoso.com -FolderId "1A2B3C4D5E6F" -Domain contoso.com -OutputDir "C:\Audits\MyRun" -Restart
+```
 
 ---
 
@@ -171,10 +216,10 @@ Depth-0 folders are the immediate children of the root folder you are auditing. 
 | Column | Source | What it means |
 |---|---|---|
 | `Group` | GAM | Name of the top-level folder |
-| `DirectFolders` | GAM (authoritative) | Direct subfolders immediately inside this top-level folder |
-| `TotalFolders` | GAM | All subfolders at any depth below this group folder (recursive) |
-| `TotalFiles` | GAM | All files at any depth below this group folder (recursive) |
-| `TotalFileSizeBytes` | GAM | Bytes of all files at any depth (recursive, uploaded files only - see Key Concepts) |
+| `DirectFolders` | Derived | Direct subfolders immediately inside this top-level folder |
+| `TotalFolders` | Derived | All subfolders at any depth below this group folder (recursive) |
+| `TotalFiles` | Derived | All files at any depth below this group folder (recursive) |
+| `TotalFileSizeBytes` | Derived | Bytes of all files at any depth (recursive, uploaded files only - see Key Concepts) |
 | `TotalOwnedExternal` | Derived | Files with external owners **anywhere in the subtree** (all subfolders combined) |
 | `TotalSharedExternal` | Derived | Files shared externally **anywhere in the subtree** (all subfolders combined) |
 
@@ -184,11 +229,11 @@ Depth-0 folders are the immediate children of the root folder you are auditing. 
 
 ### FolderDetails.csv
 
-**Purpose:** Primary reference for data volume and migration risk per folder. Combines GAM's authoritative folder/file/size data with script-derived ownership and sharing counts in a single flat file.
+**Purpose:** Primary reference for data volume and migration risk per folder. Combines folder structure and size data derived from the file walk with script-derived ownership and sharing counts in a single flat file.
 
 **One row per folder** (including the root folder at depth -1 and a Trash entry if present).
 
-#### Columns from GAM
+#### Columns
 
 | Column | What it means |
 |---|---|
@@ -206,7 +251,7 @@ Depth-0 folders are the immediate children of the root folder you are auditing. 
 
 > **Size columns reflect uploaded files only.** Google Workspace native files - Docs, Sheets, Slides, Forms, Sites, and Drawings - have no binary storage and report 0 bytes. Size columns will undercount the true migration scope for any folder that contains a significant proportion of native Google files. File counts are not affected.
 
-> Note: The exact set and order of GAM columns may vary slightly by GAM version. The columns listed above are the ones the script references; additional columns may be present.
+> Note: These columns are derived locally from the per-subtree file walk rather than from a separate API query. File counts and sizes reflect only files visible to the impersonating user during the walk.
 
 #### Columns added by the script (direct files in this folder only)
 
@@ -381,3 +426,8 @@ A file can be internally owned and externally shared (common), or externally own
 - Run `gam info domain` in a terminal to confirm the workspace connection is healthy
 - Run `gam user <email> show fileinfo <folderid>` to confirm folder-level access
 - Review the GAM log at `%APPDATA%\GAM\logs\` for API-level errors
+
+**Run was interrupted partway through**
+- Check the output directory for `audit.state.json` - it shows which subtrees completed before the interruption
+- Re-run the same command with `-Resume` to continue from the last completed subtree
+- The `_subtrees/` subdirectory contains per-subtree CSV files you can inspect to see what data was collected before interruption
