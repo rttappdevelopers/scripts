@@ -414,8 +414,10 @@ A file can be internally owned and externally shared (common), or externally own
 **FolderTree shows wrong hierarchy / folders in wrong order**
 - The tree is sorted by full path, not by folder name alone. Folders with path characters in their names use longest-prefix matching to determine parent-child relationships.
 
-**GAM folder count and FolderDetails DirectFolders differ**
-- A warning is printed for each mismatch during the run. Trust GAM's `directFolderCount` as authoritative. The FileDetails-derived count may undercount if some folders had no visible files.
+**"Folder count mismatch" warning during the run**
+- This is a sanity check, not a data loss indicator. The warning means the script saw a different number of child folders during file attribution than the folder tree structure recorded. This almost always happens because one or more child folders are empty - they exist in the tree but contain no files, so they are never visited during file-by-file ownership analysis.
+- No data is lost. The empty folders still appear in FolderDetails.csv with correct depth, path, and recursive counts. The `DirectFolders` column uses the structural (authoritative) count, not the derived count. Summary.csv rolls up recursively from all children, so totals are unaffected.
+- You can safely ignore these warnings unless they appear on nearly every folder, which would suggest a deeper path-matching issue.
 
 **"No folders named X were found"**
 - Verify the folder is accessible to the `-UserEmail` account
