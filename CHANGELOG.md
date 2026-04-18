@@ -4,6 +4,23 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-04-18
+
+### Google - Audit Shared Drive Folder
+- **Major reliability rework** for very large Drive trees that previously appeared to hang for hours
+- Replaced the single buffered `gam print diskusage` + `gam print filelist` walks (which held the full result set in memory and produced no output until completion) with a streaming, checkpointed, per-subtree architecture:
+  - **Step 1**: enumerate the audited folder's immediate children with one fast API call to build a work list
+  - **Step 2**: walk each child subtree independently with `gam print filelist`, streaming each row to a per-subtree CSV in `_subtrees/` as it arrives; print a heartbeat every 30 seconds with rows-written and rows-per-minute
+  - **Step 2.5**: merge per-subtree CSVs into the unified `FileDetails.csv`, deduplicating by file ID
+  - **Step 2.6**: derive `FolderDetails.csv` locally in PowerShell from the file list (eliminates the second slow API walk that the prior version's diskusage step performed)
+- Added `audit.state.json` checkpoint file written after every subtree completes; tracks per-subtree status (pending / in-progress / done / failed)
+- Added `-Resume` and `-Restart` switches; when neither is supplied and a state file is detected, the script prompts interactively (Yes / No / Quit) so re-running against the same OutputDir never silently destroys data
+- An interrupted run (Ctrl+C, reboot, network drop) leaves a `.partial` file behind so the partially-streamed subtree can be re-walked on resume without confusion
+- Console output during long walks now shows per-subtree progress (`[5/120] FolderName`, ID, row count, heartbeat) instead of going silent for hours
+- Verified Google Drive API limits: 12,000 queries/60s/user (no daily cap); GAM walks one folder per API call, so wall-clock time scales with folder count, not file count
+
+---
+
 ## 2026-04-17
 
 ### Google - Audit Shared Drive Folder

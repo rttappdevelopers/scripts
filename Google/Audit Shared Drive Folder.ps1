@@ -87,7 +87,13 @@ param(
     [string]$OutputDir,
     [switch]$IncludeSharedDrive,
     [string]$ConfigBaseDir = "C:\GAMConfig",
-    [string]$ConfigDir     = ""
+    [string]$ConfigDir     = "",
+    # When the script is re-run against an existing OutputDir containing a state
+    # file, -Resume continues from the next un-processed subtree and -Restart
+    # discards prior progress and starts over. If neither switch is supplied
+    # and a state file is detected, the script prompts interactively.
+    [switch]$Resume,
+    [switch]$Restart
 )
 
 # -- Transcript logging -------------------------------------------------------
@@ -111,7 +117,93 @@ $runStatus = 'Success'
 
 try {
 
-# -- Verify GAM is installed and configured -----------------------------------
+# -- Helper functions ---------------------------------------------------------
+# Invoke-GamStream: run a GAM command and stream its output line-by-line to a
+# CSV file on disk. Each non-progress line containing a comma is appended to
+# the target file as soon as it arrives, so a long-running walk produces a
+# growing CSV that survives an unexpected reboot. A heartbeat is printed every
+# $HeartbeatSeconds with the current row count and rate.
+#
+# Returns a hashtable with the row count and exit code so callers can decide
+# whether the run succeeded.
+function Invoke-GamStream {
+    param(
+        [Parameter(Mandatory)] [string[]] $Arguments,
+        [Parameter(Mandatory)] [string]   $OutputCsv,
+        [string] $Label = 'rows',
+        [int]    $HeartbeatSeconds = 30,
+        [switch] $WriteHeader
+    )
+
+    # Use a .partial file while writing so a Ctrl+C or crash leaves an obvious
+    # marker that the file is incomplete; rename to final on success.
+    $partial = "$OutputCsv.partial"
+    if (Test-Path $partial) { Remove-Item $partial -Force }
+
+    $writer = [System.IO.StreamWriter]::new($partial, $false, [System.Text.UTF8Encoding]::new($false))
+    $rowCount     = 0
+    $headerWritten = $false
+    $startTime    = Get-Date
+    $nextBeat     = $startTime.AddSeconds($HeartbeatSeconds)
+
+    try {
+        # Stream stdout AND stderr together so GAM progress lines (stderr)
+        # interleave with CSV rows (stdout) in the order GAM emits them.
+        # Out-Null on the file write would buffer; StreamWriter.WriteLine
+        # flushes on each AutoFlush=true call.
+        $writer.AutoFlush = $true
+
+        & gam @Arguments 2>&1 | ForEach-Object {
+            $line = "$_"
+            if ($line -match ',' -and $line -notmatch '^\s*User:' -and $line -notmatch '^Getting ' -and $line -notmatch '^Got ') {
+                # CSV data line: header arrives first, then rows.
+                if (-not $headerWritten) {
+                    if ($WriteHeader) { $writer.WriteLine($line) }
+                    $headerWritten = $true
+                } else {
+                    $writer.WriteLine($line)
+                    $rowCount++
+                }
+            } else {
+                # Progress / status line: echo to console only.
+                Write-Host "    $line" -ForegroundColor DarkGray
+            }
+
+            $now = Get-Date
+            if ($now -ge $nextBeat) {
+                $elapsed = ($now - $startTime).TotalSeconds
+                $rate    = if ($elapsed -gt 0) { [int](($rowCount / $elapsed) * 60) } else { 0 }
+                Write-Host ("    [{0:HH:mm:ss}] {1}: {2:N0} {3} written ({4:N0}/min)" -f $now, (Split-Path $OutputCsv -Leaf), $rowCount, $Label, $rate) -ForegroundColor Cyan
+                $nextBeat = $now.AddSeconds($HeartbeatSeconds)
+            }
+        }
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $writer.Close()
+    }
+
+    if ($exitCode -eq 0) {
+        Move-Item -Path $partial -Destination $OutputCsv -Force
+    }
+
+    return @{ RowCount = $rowCount; ExitCode = $exitCode; HeaderWritten = $headerWritten }
+}
+
+# Save-AuditState / Load-AuditState: persist a small JSON manifest in the
+# OutputDir describing the audit scope and per-subtree completion. This is
+# what enables -Resume after an interruption (Ctrl+C, reboot, network drop).
+function Save-AuditState {
+    param([Parameter(Mandatory)][hashtable]$State, [Parameter(Mandatory)][string]$Path)
+    $json = $State | ConvertTo-Json -Depth 8
+    [System.IO.File]::WriteAllText($Path, $json, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Load-AuditState {
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path $Path)) { return $null }
+    $raw = Get-Content -Raw -Path $Path
+    return ($raw | ConvertFrom-Json -AsHashtable)
+}
 # GAM must be on the system PATH before any API calls can be made.
 # Get-Command probes PATH without raising a terminating error, so we can give
 # a clear, actionable message instead of a raw "not recognized" exception.
@@ -359,6 +451,51 @@ $diskUsageCsv    = Join-Path $OutputDir "FolderDetails.csv"
 $fileDetailCsv   = Join-Path $OutputDir "FileDetails.csv"
 $summaryCsv      = Join-Path $OutputDir "Summary.csv"
 $folderTreeTxt   = Join-Path $OutputDir "FolderTree.txt"
+$stateFile       = Join-Path $OutputDir "audit.state.json"
+$subtreeDir      = Join-Path $OutputDir "_subtrees"
+if (-not (Test-Path $subtreeDir)) { New-Item -ItemType Directory -Path $subtreeDir -Force | Out-Null }
+
+# -- Resume / Restart detection -----------------------------------------------
+# If a state file exists in the OutputDir we have a prior run that may be
+# resumable. Honor explicit -Resume / -Restart switches; otherwise prompt.
+# A non-interactive caller that supplies -OutputDir without either switch will
+# get the prompt (we never silently destroy data).
+$existingState = Load-AuditState -Path $stateFile
+$resumeMode    = $false
+if ($existingState) {
+    $doneCount    = @($existingState.Subtrees.Values | Where-Object { $_.Status -eq 'done' }).Count
+    $totalCount   = $existingState.Subtrees.Count
+    $pendingCount = $totalCount - $doneCount
+
+    Write-Host ""
+    Write-Host "Existing audit state detected in: $OutputDir" -ForegroundColor Yellow
+    Write-Host "  Started:  $($existingState.StartTime)" -ForegroundColor DarkGray
+    Write-Host "  Folder:   $($existingState.FolderName) ($($existingState.FolderId))" -ForegroundColor DarkGray
+    Write-Host "  Progress: $doneCount of $totalCount subtrees complete ($pendingCount remaining)" -ForegroundColor DarkGray
+    Write-Host ""
+
+    if ($Resume) {
+        $resumeMode = $true
+        Write-Host "  -Resume specified: continuing from subtree $($doneCount + 1) of $totalCount." -ForegroundColor Green
+    } elseif ($Restart) {
+        Write-Host "  -Restart specified: discarding prior progress." -ForegroundColor Yellow
+        Remove-Item $stateFile -Force
+        if (Test-Path $subtreeDir) { Get-ChildItem $subtreeDir -File | Remove-Item -Force }
+        $existingState = $null
+    } else {
+        $choice = Read-Host "Resume from subtree $($doneCount + 1)? [Y]es / [N]o (start over) / [Q]uit"
+        switch ($choice.Trim().ToUpper()) {
+            'Y' { $resumeMode = $true; Write-Host "  Resuming." -ForegroundColor Green }
+            'N' {
+                Write-Host "  Starting over - prior progress discarded." -ForegroundColor Yellow
+                Remove-Item $stateFile -Force
+                if (Test-Path $subtreeDir) { Get-ChildItem $subtreeDir -File | Remove-Item -Force }
+                $existingState = $null
+            }
+            default { throw "Aborted by user." }
+        }
+    }
+}
 
 $auditTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -427,107 +564,348 @@ if ($ResourceKey) {
 }
 Write-Host ""
 
-# -- Step 1: Disk Usage (subfolder counts, file counts, sizes) ----------------
-# 'gam print diskusage' walks the entire folder tree and emits one CSV row per
-# folder containing:
-#   directFileCount / directFolderCount / directFileSize  - items in this folder only
-#   totalFileCount  / totalFolderCount  / totalFileSize   - items in this folder + all descendants
-# This gives migration planners a quick top-down view of where data volume lives.
-Write-Host "[1/3] Running disk usage analysis..." -ForegroundColor Yellow
-Write-Host "  Querying Google Drive API - this may take several minutes for large folders." -ForegroundColor DarkGray
-try {
-    $diskUsageArgs = @(
-        "user", $UserEmail,
-        "print", "diskusage"
-    )
+# -- Step 1: Enumerate top-level subtrees -------------------------------------
+# Rather than hand the entire folder tree to one GAM 'print diskusage' walk
+# (which buffers the whole result in memory and gives no progress visibility
+# until it finishes - hours later), we split the audit into one GAM call per
+# immediate child folder. Each child is a "subtree" that is processed
+# independently, streamed to its own CSV file on disk, and checkpointed in
+# audit.state.json so a Ctrl+C, reboot, or network drop is fully recoverable.
+#
+# Two extra entries are added to the work list:
+#   __ROOT_FILES__ - files that live directly in the audited folder (not in
+#                    any subfolder). Captured with depth 0 against the root.
+#   __ROOT_INFO__  - the root folder itself, so it appears in FolderDetails.
+#
+# We also use 'print filelist' instead of 'print diskusage' for the per-subtree
+# walk. filelist returns full file metadata (owner, perms, size, path) AND
+# can be used to derive folder-level statistics locally in PowerShell, which
+# eliminates the second slow walk that the prior version performed.
 
-    # The folder selector differs by audit mode:
-    #   shareddriveid - root of an entire Shared Drive
-    #   id:<guid>     - a specific folder by its Drive ID (unambiguous)
-    #   drivefilename - folder by name (only reached if FolderName was never
-    #                   resolved to an ID above, which shouldn't happen)
-    if ($IncludeSharedDrive) {
-        $diskUsageArgs += @("shareddriveid", $FolderId)
-    } elseif ($FolderId) {
-        $diskUsageArgs += @("id:$FolderId")
-    } else {
-        $diskUsageArgs += @("drivefilename", $FolderName)
-    }
+if (-not $existingState) {
+    Write-Host "[1/4] Enumerating top-level subtrees..." -ForegroundColor Yellow
 
-    # Omit 2>&1 so GAM's stderr progress lines (Getting/Got) stream live to the console.
-    # Only stdout (the CSV rows) is captured. Filter to lines containing commas so that
-    # GAM's stdout summary lines ("User: ... Drive Folder: ... Printed") are excluded;
-    # those use whitespace separators and contain no commas, unlike CSV header/data rows.
-    $diskUsageData = & gam @diskUsageArgs | Where-Object { $_ -match ',' -and $_ -notmatch '^\s*User:' }
-    if ($LASTEXITCODE -ne 0) {
-        throw "GAM diskusage command failed (exit $LASTEXITCODE). Check GAM configuration and folder permissions."
-    }
-
-    if ($diskUsageData) {
-        $diskUsageData | Out-File -FilePath $diskUsageCsv -Encoding UTF8
-        $rowCount = ($diskUsageData | Measure-Object).Count - 1  # subtract header row
-        Write-Host "  Saved $rowCount folder records to FolderDetails.csv" -ForegroundColor Green
-    } else {
-        Write-Warning "  No disk usage data returned. Verify the folder name/ID and user access."
-        $runStatus = 'Partial'
-    }
-} catch {
-    Write-Error "  Disk usage query failed: $($_.Exception.Message)"
-    $runStatus = 'Partial'
-}
-
-# -- Step 2: File Details (owner, size, path, permissions) --------------------
-# 'gam print filelist' enumerates every file under the target folder and emits
-# one CSV row per file. The fields requested are:
-#   id, name, mimetype, size       - basic identity and size
-#   owners.emailaddress            - who owns the file (may be external)
-#   basicpermissions               - share recipients and their roles
-# fullpath adds a path.N column with the full Drive path for each file.
-# showshareddrivepermissions includes inherited permissions from the Shared
-# Drive itself, which would otherwise be invisible in the permission columns.
-# showownedby any ensures files owned by other users (e.g. external accounts)
-# are included and not silently skipped.
-Write-Host "[2/3] Retrieving file details with ownership and permissions..." -ForegroundColor Yellow
-Write-Host "  Querying Google Drive API - this may take several minutes for large folders." -ForegroundColor DarkGray
-try {
-    $fileListArgs = @(
+    $childArgs = @(
         "user", $UserEmail,
         "print", "filelist",
-        "select"   # 'select' introduces the folder scope argument that follows
+        "select", "id:$FolderId",
+        "depth", "0",
+        "showmimetype", "gfolder",
+        "fields", "id,name",
+        "showownedby", "any"
     )
-
     if ($IncludeSharedDrive) {
-        $fileListArgs += @("shareddriveid", $FolderId)
-    } elseif ($FolderId) {
-        $fileListArgs += @("id:$FolderId")
-    } else {
-        $fileListArgs += @("drivefilename", $FolderName)
+        # For Shared Drives the selector is shareddriveid, not id:
+        $childArgs = @(
+            "user", $UserEmail,
+            "print", "filelist",
+            "select", "shareddriveid", $FolderId,
+            "depth", "0",
+            "showmimetype", "gfolder",
+            "fields", "id,name",
+            "showownedby", "any"
+        )
     }
 
-    $fileListArgs += @(
+    $childOutput = & gam @childArgs 2>&1 | Where-Object { $_ -match ',' -and $_ -notmatch '^\s*User:' -and $_ -notmatch '^Getting ' -and $_ -notmatch '^Got ' }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to enumerate top-level folders (exit $LASTEXITCODE). Check GAM configuration and folder access."
+    }
+
+    $childFolders = @($childOutput | ConvertFrom-Csv)
+    Write-Host "  Found $($childFolders.Count) top-level subfolder(s)." -ForegroundColor Green
+
+    # Build the work list. Order matters for resume: process root files first
+    # so the root folder shows up immediately in FileDetails, then each child.
+    $subtrees = [ordered]@{}
+    $subtrees['__ROOT_FILES__'] = @{ Name = '(root files)'; FolderId = $FolderId; Depth0 = $true; Status = 'pending' }
+    foreach ($cf in $childFolders) {
+        $subtrees[$cf.id] = @{ Name = $cf.name; FolderId = $cf.id; Depth0 = $false; Status = 'pending' }
+    }
+
+    $auditState = @{
+        StartTime    = (Get-Date).ToString('o')
+        FolderId     = $FolderId
+        FolderName   = if ($childFolders.Count -gt 0) { 'audited folder' } else { '(unknown)' }
+        UserEmail    = $UserEmail
+        Domain       = $Domain
+        SharedDrive  = [bool]$IncludeSharedDrive
+        Subtrees     = $subtrees
+    }
+    Save-AuditState -State $auditState -Path $stateFile
+    Write-Host "  State file: $stateFile" -ForegroundColor DarkGray
+} else {
+    $auditState = $existingState
+    Write-Host "[1/4] Reusing prior subtree list ($($auditState.Subtrees.Count) total)." -ForegroundColor Yellow
+}
+Write-Host ""
+
+# -- Step 2: Walk each subtree (streaming, checkpointed) ----------------------
+# For each pending subtree, run a single 'gam print filelist' that returns
+# every file and folder under it. Output streams to a per-subtree CSV file
+# (e.g. _subtrees/<folderId>.csv) as rows arrive, with a heartbeat printed
+# every 30 seconds. When the GAM call finishes successfully, the subtree is
+# marked 'done' in the state file and the next one starts. Subtrees marked
+# 'done' on a prior run are skipped, enabling -Resume.
+
+Write-Host "[2/4] Walking subtrees (streaming to disk; resumable)..." -ForegroundColor Yellow
+$subtreeKeys   = @($auditState.Subtrees.Keys)
+$totalSubtrees = $subtreeKeys.Count
+$pendingKeys   = @($subtreeKeys | Where-Object { $auditState.Subtrees[$_].Status -ne 'done' })
+$skipped       = $totalSubtrees - $pendingKeys.Count
+if ($skipped -gt 0) {
+    Write-Host "  Skipping $skipped subtree(s) already completed on a prior run." -ForegroundColor DarkGray
+}
+
+$subtreeIdx = 0
+foreach ($key in $subtreeKeys) {
+    $subtreeIdx++
+    $entry = $auditState.Subtrees[$key]
+    if ($entry.Status -eq 'done') { continue }
+
+    $progressLabel = "[$subtreeIdx/$totalSubtrees] $($entry.Name)"
+    Write-Host ""
+    Write-Host "  $progressLabel" -ForegroundColor White
+    Write-Host "    ID: $($entry.FolderId)" -ForegroundColor DarkGray
+
+    # Build the subtree filelist command. ROOT_FILES uses depth 0 against the
+    # audited folder; everything else walks the entire subtree under the child.
+    $gamArgs = @("user", $UserEmail, "print", "filelist", "select")
+    if ($entry.Depth0 -and $IncludeSharedDrive) {
+        $gamArgs += @("shareddriveid", $entry.FolderId, "depth", "0")
+    } elseif ($entry.Depth0) {
+        $gamArgs += @("id:$($entry.FolderId)", "depth", "0")
+    } else {
+        $gamArgs += @("id:$($entry.FolderId)")
+    }
+    $gamArgs += @(
         "showownedby", "any",
-        "fields", "id,name,mimetype,size,owners.emailaddress,basicpermissions",
+        "fields", "id,name,mimetype,size,parents,owners.emailaddress,basicpermissions",
         "fullpath",
         "showshareddrivepermissions"
     )
 
-    # Run GAM without 2>&1 so progress messages on stderr print live to the console.
-    # Filter to lines containing commas so GAM's stdout summary lines are excluded.
-    $fileListData = & gam @fileListArgs | Where-Object { $_ -match ',' -and $_ -notmatch '^\s*User:' }
-    if ($LASTEXITCODE -ne 0) {
-        throw "GAM filelist command failed (exit $LASTEXITCODE). Check GAM configuration and folder permissions."
-    }
+    $subtreeCsv = Join-Path $subtreeDir ("{0}.csv" -f ($key -replace '[^A-Za-z0-9_-]', '_'))
+    $entry.Status     = 'in-progress'
+    $entry.StartedAt  = (Get-Date).ToString('o')
+    Save-AuditState -State $auditState -Path $stateFile
 
-    if ($fileListData) {
-        $fileListData | Out-File -FilePath $fileDetailCsv -Encoding UTF8
-        $rowCount = ($fileListData | Measure-Object).Count - 1
-        Write-Host "  Saved $rowCount file records to FileDetails.csv" -ForegroundColor Green
-    } else {
-        Write-Warning "  No file data returned. Verify the folder name/ID and user access."
+    try {
+        # First subtree writes the header; subsequent ones drop it (we'll
+        # concatenate later). Actually each per-subtree CSV needs its own
+        # header so it's individually openable for debugging - keep the header.
+        $result = Invoke-GamStream -Arguments $gamArgs -OutputCsv $subtreeCsv -Label 'files' -WriteHeader
+
+        if ($result.ExitCode -ne 0) {
+            Write-Warning "    GAM exited with code $($result.ExitCode) - subtree may be incomplete."
+            $entry.Status     = 'failed'
+            $entry.ExitCode   = $result.ExitCode
+            $runStatus = 'Partial'
+        } else {
+            $entry.Status     = 'done'
+            $entry.RowCount   = $result.RowCount
+            $entry.CompletedAt = (Get-Date).ToString('o')
+            Write-Host "    Done. $($result.RowCount) rows captured." -ForegroundColor Green
+        }
+    } catch {
+        Write-Error "    Subtree failed: $($_.Exception.Message)"
+        $entry.Status = 'failed'
         $runStatus = 'Partial'
     }
-} catch {
-    Write-Error "  File list query failed: $($_.Exception.Message)"
+
+    Save-AuditState -State $auditState -Path $stateFile
+}
+
+# -- Step 2.5: Merge subtree CSVs into FileDetails.csv ------------------------
+# Each subtree wrote its own per-folder CSV with its own header. The headers
+# may differ slightly (different number of permissions.N.* or path.N columns
+# depending on the subtree), so we union the columns rather than blindly
+# concatenating. Output is a single FileDetails.csv that downstream steps
+# already know how to consume.
+
+Write-Host ""
+Write-Host "[3/4] Merging subtree results into FileDetails.csv..." -ForegroundColor Yellow
+$subtreeFiles = @(Get-ChildItem -Path $subtreeDir -Filter '*.csv' -File -ErrorAction SilentlyContinue)
+if ($subtreeFiles.Count -eq 0) {
+    Write-Warning "  No subtree CSVs found - nothing to merge."
+    $runStatus = 'Partial'
+} else {
+    # Read all rows. Import-Csv handles header per file; results are PSObjects
+    # whose union we can write back via Export-Csv.
+    $allRows = @()
+    foreach ($sf in $subtreeFiles) {
+        try {
+            $rows = @(Import-Csv -Path $sf.FullName)
+            $allRows += $rows
+        } catch {
+            Write-Warning "  Failed to read $($sf.Name): $($_.Exception.Message)"
+        }
+    }
+    if ($allRows.Count -gt 0) {
+        # Deduplicate by id - the same folder/file can appear in multiple
+        # subtrees if a subtree includes its parent (showparent option).
+        $deduped = $allRows | Group-Object -Property id | ForEach-Object { $_.Group | Select-Object -First 1 }
+        $deduped | Export-Csv -Path $fileDetailCsv -NoTypeInformation -Encoding UTF8
+        Write-Host "  Wrote $($deduped.Count) unique records to FileDetails.csv." -ForegroundColor Green
+    } else {
+        Write-Warning "  Subtree files were empty."
+        $runStatus = 'Partial'
+    }
+}
+
+# -- Step 2.6: Derive FolderDetails.csv locally from FileDetails -------------
+# Replaces the per-folder 'gam print diskusage' walk that the prior version
+# ran (O(folders) sequential API calls, hours for large trees). Now we read
+# the already-collected file list and compute per-folder stats in PowerShell:
+#   directFileCount / directFolderCount / directFileSize  - immediate children
+#   totalFileCount  / totalFolderCount  / totalFileSize   - recursive totals
+# Folder identity comes from rows whose mimeType is application/vnd.google-apps.folder.
+# Direct children are computed by parent ID; recursive totals by path prefix.
+
+Write-Host ""
+Write-Host "[3b/4] Deriving FolderDetails.csv from FileDetails (no extra API calls)..." -ForegroundColor Yellow
+if (Test-Path $fileDetailCsv) {
+    $allItems = @(Import-Csv -Path $fileDetailCsv)
+    $folderMime = 'application/vnd.google-apps.folder'
+
+    # Identify the path column that GAM produced (path.0, path.1, ...).
+    # Match 'path.<digits>' specifically so we do not pick up the 'paths'
+    # count column.
+    $pathColLocal = ($allItems[0].PSObject.Properties |
+        Where-Object { $_.Name -match '^path\.\d+$' } | Select-Object -First 1).Name
+    if (-not $pathColLocal) {
+        Write-Warning "  No path column found in FileDetails.csv. FolderDetails cannot be derived."
+        $runStatus = 'Partial'
+    } else {
+        # Build folder lookup keyed by ID with depth/path/name and a stats accumulator.
+        $folderById = @{}
+        foreach ($it in $allItems) {
+            if ($it.mimeType -eq $folderMime) {
+                $rawPath = ($it.$pathColLocal | ForEach-Object { $_ }) -as [string]
+                if ($rawPath) { $rawPath = $rawPath.TrimStart('/') }
+                $folderById[$it.id] = [PSCustomObject]@{
+                    id                = $it.id
+                    name              = $it.name
+                    path              = $rawPath
+                    parentId          = $it.'parents.0.id'
+                    depth             = -2  # filled in below
+                    directFileCount   = 0
+                    directFolderCount = 0
+                    directFileSize    = 0
+                    totalFileCount    = 0
+                    totalFolderCount  = 0
+                    totalFileSize     = 0
+                    ownedByMe         = ''
+                    trashed           = $false
+                    explicitlyTrashed = $false
+                    Owner             = ''
+                }
+            }
+        }
+
+        # The audited folder itself may not appear in the file list rows when it
+        # is a Shared Drive root or when 'showparent' was suppressed. Derive its
+        # full path from any direct child (parent of which is the audited folder)
+        # by stripping the child's last segment. This is required for correct
+        # depth assignment and recursive prefix matching below.
+        $rootPathLocal = $null
+        $directChild = $allItems | Where-Object { $_.'parents.0.id' -eq $FolderId -and $_.$pathColLocal } | Select-Object -First 1
+        if ($directChild) {
+            $childPath = $directChild.$pathColLocal
+            $lastSlash = $childPath.LastIndexOf('/')
+            if ($lastSlash -gt 0) { $rootPathLocal = $childPath.Substring(0, $lastSlash) }
+        }
+
+        if (-not $folderById.ContainsKey($FolderId)) {
+            $folderById[$FolderId] = [PSCustomObject]@{
+                id = $FolderId; name = '(audited folder)'; path = $rootPathLocal; parentId = $null;
+                depth = -1; directFileCount = 0; directFolderCount = 0; directFileSize = 0;
+                totalFileCount = 0; totalFolderCount = 0; totalFileSize = 0;
+                ownedByMe = ''; trashed = $false; explicitlyTrashed = $false; Owner = ''
+            }
+        } else {
+            $folderById[$FolderId].depth = -1
+            if ($rootPathLocal) { $folderById[$FolderId].path = $rootPathLocal }
+        }
+
+        # Pass 1: direct counts from each item's parent.
+        foreach ($it in $allItems) {
+            $parent = $it.'parents.0.id'
+            if (-not $parent -or -not $folderById.ContainsKey($parent)) { continue }
+            $f = $folderById[$parent]
+            if ($it.mimeType -eq $folderMime) {
+                $f.directFolderCount++
+            } else {
+                $f.directFileCount++
+                $sz = 0
+                if ($it.size -and [long]::TryParse($it.size, [ref]$sz)) { $f.directFileSize += $sz }
+            }
+        }
+
+        # Pass 2: depth assignment. Direct children of the audited folder are
+        # depth 0, grandchildren depth 1, and so on. Use the parent chain via
+        # parents.0.id (more reliable than path slash counting because folder
+        # names can themselves contain slashes when GAM URL-encodes them).
+        foreach ($f in $folderById.Values) {
+            if ($f.id -eq $FolderId) { $f.depth = -1; continue }
+            $depth = 0
+            $current = $f.parentId
+            $guard = 0
+            while ($current -and $current -ne $FolderId -and $guard -lt 64) {
+                if (-not $folderById.ContainsKey($current)) { break }
+                $current = $folderById[$current].parentId
+                $depth++
+                $guard++
+            }
+            if ($current -eq $FolderId) {
+                $f.depth = $depth
+            } else {
+                # Fall back to path-based depth when parent chain is broken
+                # (e.g. shared drive items whose parents we did not capture).
+                if ($f.path -and $rootPathLocal -and $f.path.StartsWith("$rootPathLocal/")) {
+                    $rel = $f.path.Substring($rootPathLocal.Length + 1)
+                    $f.depth = ($rel -split '/').Count - 1
+                } else {
+                    $f.depth = 0
+                }
+            }
+        }
+
+        # Pass 3: recursive totals via path-prefix matching. For each folder,
+        # totalFileCount = sum of direct files in this folder and every folder
+        # whose path starts with "$thisPath/".
+        $foldersByPath = $folderById.Values | Where-Object { $_.path } | Sort-Object { $_.path.Length }
+        foreach ($f in $foldersByPath) {
+            $f.totalFileCount   = $f.directFileCount
+            $f.totalFolderCount = $f.directFolderCount
+            $f.totalFileSize    = $f.directFileSize
+            $prefix = "$($f.path)/"
+            foreach ($g in $foldersByPath) {
+                if ($g.id -eq $f.id) { continue }
+                if ($g.path.StartsWith($prefix)) {
+                    $f.totalFileCount   += $g.directFileCount
+                    $f.totalFolderCount += $g.directFolderCount + 0  # already counted via direct
+                    $f.totalFileSize    += $g.directFileSize
+                }
+            }
+            # totalFolderCount = count of all descendant folders.
+            $f.totalFolderCount = @($foldersByPath | Where-Object { $_.id -ne $f.id -and $_.path.StartsWith($prefix) }).Count
+        }
+
+        # Emit FolderDetails.csv with the column names downstream code expects.
+        $folderRows = $folderById.Values |
+            Sort-Object depth, path |
+            Select-Object @{N='User';E={$UserEmail}},
+                          @{N='Owner';E={$_.Owner}},
+                          id, name, ownedByMe, trashed, explicitlyTrashed,
+                          directFileCount, directFileSize, directFolderCount,
+                          totalFileCount, totalFileSize, totalFolderCount,
+                          depth, path
+        $folderRows | Export-Csv -Path $diskUsageCsv -NoTypeInformation -Encoding UTF8
+        Write-Host "  Derived $($folderById.Count) folder records." -ForegroundColor Green
+    }
+} else {
+    Write-Warning "  FileDetails.csv missing - cannot derive FolderDetails."
     $runStatus = 'Partial'
 }
 
@@ -540,7 +918,7 @@ try {
 #   SharedExternally  - files shared with anyone outside the tenant domain,
 #                       including specific external emails, external domains,
 #                       and "anyone with the link" (public) permissions
-Write-Host "[3/3] Analyzing external ownership and sharing..." -ForegroundColor Yellow
+Write-Host "[4/4] Analyzing external ownership and sharing..." -ForegroundColor Yellow
 try {
     if (Test-Path $fileDetailCsv) {
         $files = Import-Csv $fileDetailCsv
@@ -550,8 +928,9 @@ try {
             $runStatus = 'Partial'
         } else {
         # GAM names the full-path column 'path.0' (and 'path.1', 'path.2'...
+        # Match 'path.<digits>' to avoid matching the 'paths' count column.
         $pathCol = ($files | Get-Member -MemberType NoteProperty |
-            Where-Object { $_.Name -match "^path" } |
+            Where-Object { $_.Name -match '^path\.\d+$' } |
             Select-Object -First 1).Name
 
         if (-not $pathCol) {
