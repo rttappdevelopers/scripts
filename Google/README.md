@@ -21,6 +21,10 @@ Scripts for auditing and managing Google Workspace environments using [GAM7](htt
 - [Running Scripts](#running-scripts)
 - [Useful GAM Commands Reference](#useful-gam-commands-reference)
 - [Script Index](#script-index)
+  - [Initialize GAM.ps1](#initialize-gamps1)
+  - [Audit Shared Drive Folder.ps1](#audit-shared-drive-folderps1)
+  - [Audit Google Groups.ps1](#audit-google-groupsps1)
+- [Future Enhancements](#future-enhancements)
 - [Resources](#resources)
 
 ---
@@ -253,10 +257,46 @@ gam user user@domain.com print filetree select drivefilename "Folder Name" field
 
 | Script | Purpose |
 |---|---|
-| [`Initialize GAM.ps1`](Initialize%20GAM.ps1) | One-time setup of GAM7 for a Google Workspace tenant: installs GAM, sets up directories and environment variables, creates a GCP project, authorizes OAuth and domain-wide delegation, and saves the customer config |
-| [`Audit Shared Drive Folder.ps1`](Audit%20Shared%20Drive%20Folder.ps1) | Audits a Google Drive folder for subfolder counts, file counts, external ownership, external sharing, and total sizes - outputs four reports (Summary, FolderDetails, FileDetails, FolderTree) for migration planning. Streams output per-subtree to disk with a 30-second heartbeat, checkpoints to `audit.state.json`, and supports `-Resume` / `-Restart` so multi-hour walks survive Ctrl+C, reboot, or network drops. Automatically detects legacy resource key-protected folders and prompts for the owner's email to impersonate |
+| [`Initialize GAM.ps1`](#initialize-gamps1) | One-time setup of GAM7 for a Google Workspace tenant |
+| [`Audit Shared Drive Folder.ps1`](#audit-shared-drive-folderps1) | Audits a Google Drive folder structure for migration planning |
+| [`Audit Google Groups.ps1`](#audit-google-groupsps1) | Inventories every Google Group for security review |
+
+---
+
+### Initialize GAM.ps1
+
+[`Initialize GAM.ps1`](Initialize%20GAM.ps1) - One-time setup of GAM7 for a Google Workspace tenant: installs GAM, sets up directories and environment variables, creates a GCP project, authorizes OAuth and domain-wide delegation, and saves the customer config.
+
+---
+
+### Audit Shared Drive Folder.ps1
+
+[`Audit Shared Drive Folder.ps1`](Audit%20Shared%20Drive%20Folder.ps1) - Audits a Google Drive folder for subfolder counts, file counts, external ownership, external sharing, and total sizes - outputs four reports (Summary, FolderDetails, FileDetails, FolderTree) for migration planning. Streams output per-subtree to disk with a 30-second heartbeat, checkpoints to `audit.state.json`, and supports `-Resume` / `-Restart` so multi-hour walks survive Ctrl+C, reboot, or network drops. Automatically detects legacy resource key-protected folders and prompts for the owner's email to impersonate.
 
 See [Audit Shared Drive Folder - Guide.md](Audit%20Shared%20Drive%20Folder%20-%20Guide.md) for full usage instructions, a complete column reference for each output file, and data interpretation guidance.
+
+---
+
+### Audit Google Groups.ps1
+
+[`Audit Google Groups.ps1`](Audit%20Google%20Groups.ps1) - Inventories every Google Group in a tenant for security review. Classifies each group as Security, Email (distribution), or Both via Cloud Identity labels; captures owner and manager email addresses, internal vs external member counts, and access settings (`whoCanJoin`, `whoCanPostMessage`, `allowExternalMembers`, etc.); and emits risk flags for owner-less groups, external members, externally-owned groups, public-join, public-post, security groups containing external members, and nested-group references. Outputs `GroupMembers.csv` (primary export with Group Name, Group Email, Group Type, Member Name, Member Email, Role, and NestedVia), `Groups.csv`, and a human-readable `Summary.txt`.
+
+---
+
+## Future Enhancements
+
+Ideas for extending the group audit scripts. These are not yet implemented.
+
+### Audit Google Groups
+
+| Idea | Description |
+|---|---|
+| External-domain frequency table | Group external-member emails by domain to surface vendor/contractor patterns and shadow-IT integrations - helps identify which third-party domains have broad recurring access |
+| Permission impact for security groups | Cross-reference Security-type groups against Drive ACLs (reuse `FileDetails.csv` from the Drive audit) to show which files each security group grants access to |
+| Diff / change detection mode | `-CompareTo <previous output dir>` to flag added/removed groups and membership changes between audit runs |
+| Nesting depth report | When `-ExpandNestedGroups` is on, record each transitively-included member's nesting depth so deeply chained groups that obscure true access are surfaced |
+| Mail-flow risk overlay | Combine `messageModerationLevel` and `whoCanPostMessage` settings with mailbox forwarding data to flag external-receivable, no-moderation groups - a common phishing pivot |
+| Owner-less stale group cleanup report | Cross-reference `Risk_NoOwners` groups against group last-activity date (requires Reports API) to flag orphaned groups that have also gone unused and are candidates for deletion |
 
 ---
 
