@@ -23,7 +23,7 @@
     Groups Settings API (access controls). GAM must be installed and configured
     first - run Initialize GAM.ps1 if you have not already done so.
 
-    Outputs three files to the specified output directory:
+    Outputs four files to the specified output directory:
       1. GroupMembers.csv  - primary export: one row per (group, member) with group name,
                              group email, group type, member display name, member email,
                              role, member type, internal/external classification, and
@@ -31,8 +31,12 @@
                              the user comes through (NestedVia)
       2. Groups.csv        - one row per group: type, owner and manager email lists,
                              member counts, access settings, and risk flags
-      3. Summary.txt       - human-readable risk highlights listing specific group and
-                             member addresses, plus tenant-wide totals
+      3. GroupTree.txt     - human-readable tree of every group with its members listed
+                             beneath, annotated with role, internal/external, and nesting
+                             path - the visual companion to GroupMembers.csv
+      4. Summary.txt       - tenant-wide statistics only (group type counts, membership
+                             totals, risk flag tallies); use GroupTree.txt and the CSVs
+                             for specific names and addresses
 
 .PARAMETER Domain
     Your Google Workspace primary domain, or a comma-separated list of all
@@ -224,6 +228,7 @@ if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir
 $groupsCsv     = Join-Path $OutputDir "Groups.csv"
 $membersCsv    = Join-Path $OutputDir "GroupMembers.csv"
 $summaryTxt    = Join-Path $OutputDir "Summary.txt"
+$groupTreeTxt  = Join-Path $OutputDir "GroupTree.txt"
 $rawGroupsCsv  = Join-Path $OutputDir "_raw_groups.csv"
 $rawCiCsv      = Join-Path $OutputDir "_raw_cigroups.csv"
 $rawSetCsv     = Join-Path $OutputDir "_raw_settings.csv"
@@ -331,28 +336,31 @@ foreach ($s in $setRaw) {
     if ($s.email) { $settingsByEmail[$s.email.ToLower()] = $s }
 }
 
-# Index Cloud Identity labels by group email. The labels column is a
-# semicolon-separated list of label keys (GAM serializes them this way).
+# Index Cloud Identity labels by group email. GAM splits each label into its
+# own column named 'labels.cloudidentity.googleapis.com/groups.<label>' whose
+# value is 'True' when the label applies and empty otherwise. The group email
+# is in the 'email' column.
 $labelsByEmail = @{}
 foreach ($c in $ciRaw) {
-    # GAM7 typically exposes the email at groupKey.id.
-    $emailProp = $c.PSObject.Properties | Where-Object { $_.Name -match 'groupKey\.id|email' } | Select-Object -First 1
-    if (-not $emailProp) { continue }
-    $email = "$($emailProp.Value)".ToLower()
-    if (-not $email) { continue }
-    $labelsField = $c.PSObject.Properties | Where-Object { $_.Name -match 'labels' } | Select-Object -First 1
-    $labelsByEmail[$email] = if ($labelsField) { "$($labelsField.Value)" } else { '' }
+    $emailVal = "$($c.email)".ToLower()
+    if (-not $emailVal) { continue }
+    $isSecurity = $false
+    $isForum    = $false
+    foreach ($prop in $c.PSObject.Properties) {
+        if ($prop.Value -ne 'True') { continue }
+        if ($prop.Name -match 'groups\.security')          { $isSecurity = $true }
+        if ($prop.Name -match 'groups\.discussion_forum')  { $isForum    = $true }
+    }
+    $labelsByEmail[$emailVal] = @{ Security = $isSecurity; Forum = $isForum }
 }
 
 function Get-GroupType {
     param([string]$EmailLower)
-    $labels = $labelsByEmail[$EmailLower]
-    if (-not $labels) { return 'Unknown' }
-    $isSecurity = $labels -match 'groups\.security'
-    $isForum    = $labels -match 'groups\.discussion_forum'
-    if ($isSecurity -and $isForum) { return 'Both' }
-    if ($isSecurity)               { return 'Security' }
-    if ($isForum)                  { return 'Email' }
+    if (-not $labelsByEmail.ContainsKey($EmailLower)) { return 'Unknown' }
+    $l = $labelsByEmail[$EmailLower]
+    if ($l.Security -and $l.Forum) { return 'Both' }
+    if ($l.Security)               { return 'Security' }
+    if ($l.Forum)                  { return 'Email' }
     return 'Unknown'
 }
 
@@ -487,88 +495,109 @@ $memberRows = foreach ($m in $memRaw) {
 $memberRows | Export-Csv -Path $membersCsv -NoTypeInformation -Encoding UTF8
 Write-Host "  Wrote $($memberRows.Count) rows to GroupMembers.csv" -ForegroundColor Green
 
-# -- Build Summary.txt -------------------------------------------------------
+# -- Build Summary.txt (stats only) ------------------------------------------
+# Risk highlights and per-group member listings live in GroupTree.txt and the
+# CSVs. Summary.txt is intentionally a one-screen overview of tenant counts.
 $summary = @()
 $summary += "Google Workspace Groups Audit"
 $summary += "Generated:   $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 $summary += "Domain(s):   $($InternalDomains -join ', ')"
 $summary += "Workspace:   $(Split-Path $ConfigDir -Leaf)"
 $summary += ""
-$summary += "Totals"
-$summary += "------"
-$summary += "Groups:                  $($groupRows.Count)"
-$summary += "  Security only:         $(@($groupRows | Where-Object { $_.Type -eq 'Security' }).Count)"
-$summary += "  Email only:            $(@($groupRows | Where-Object { $_.Type -eq 'Email' }).Count)"
-$summary += "  Security + Email:      $(@($groupRows | Where-Object { $_.Type -eq 'Both' }).Count)"
-$summary += "  Unknown / unlabeled:   $(@($groupRows | Where-Object { $_.Type -eq 'Unknown' }).Count)"
-$summary += "Memberships (rows):      $($memberRows.Count)"
-$summary += "  Internal:              $(@($memberRows | Where-Object { $_.Internal }).Count)"
-$summary += "  External:              $(@($memberRows | Where-Object { $_.External }).Count)"
+$summary += "Group Counts"
+$summary += "------------"
+$summary += "Total groups:                      $($groupRows.Count)"
+$summary += "  Security only:                   $(@($groupRows | Where-Object { $_.Type -eq 'Security' }).Count)"
+$summary += "  Email only:                      $(@($groupRows | Where-Object { $_.Type -eq 'Email' }).Count)"
+$summary += "  Security + Email:                $(@($groupRows | Where-Object { $_.Type -eq 'Both' }).Count)"
+$summary += "  Unknown / unlabeled:             $(@($groupRows | Where-Object { $_.Type -eq 'Unknown' }).Count)"
 $summary += ""
-$summary += "Risk Highlights"
-$summary += "---------------"
-
-# Add-RiskSection: list groups by email + type.
-function Add-RiskSection {
-    param([string]$Title, [object[]]$Rows)
-    $lines = @()
-    $lines += ""
-    $lines += "$Title ($($Rows.Count))"
-    $lines += ('-' * ($Title.Length + 4 + ([string]$Rows.Count).Length))
-    if ($Rows.Count -eq 0) {
-        $lines += "  (none)"
-    } else {
-        foreach ($r in ($Rows | Sort-Object Name | Select-Object -First 50)) {
-            $line = "  $($r.Name)"
-            if ($r.Email -ne $r.Name) { $line += " <$($r.Email)>" }
-            $line += "  [$($r.Type)]"
-            $lines += $line
-        }
-        if ($Rows.Count -gt 50) {
-            $lines += "  ... and $($Rows.Count - 50) more (see Groups.csv)"
-        }
-    }
-    return $lines
-}
-
-# Add-ExternalMemberSection: list specific external member emails per group.
-function Add-ExternalMemberSection {
-    param([string]$Title, [object[]]$GroupRows, [object[]]$AllMemberRows)
-    $lines = @()
-    $extRows = @($GroupRows | Where-Object { $_.Risk_HasExternalMembers })
-    $lines += ""
-    $lines += "$Title ($($extRows.Count) groups)"
-    $lines += ('-' * ($Title.Length + 12 + ([string]$extRows.Count).Length))
-    if ($extRows.Count -eq 0) {
-        $lines += "  (none)"
-    } else {
-        foreach ($gr in ($extRows | Sort-Object Name | Select-Object -First 30)) {
-            $extMembers = @($AllMemberRows | Where-Object { $_.GroupEmail -eq $gr.Email -and $_.External })
-            $lines += "  $($gr.Name) <$($gr.Email)>  [$($gr.Type)]"
-            foreach ($em in ($extMembers | Sort-Object MemberEmail)) {
-                $nameLabel = if ($em.MemberName) { " ($($em.MemberName))" } else { '' }
-                $nestedLabel = if ($em.NestedVia) { "  [nested via $($em.NestedVia)]" } else { '' }
-                $lines += ("    - {0}{1}  {2}{3}" -f $em.MemberEmail, $nameLabel, $em.Role, $nestedLabel)
-            }
-        }
-        if ($extRows.Count -gt 30) {
-            $lines += "  ... and $($extRows.Count - 30) more groups (see GroupMembers.csv, filter External=True)"
-        }
-    }
-    return $lines
-}
-
-$summary += Add-RiskSection "Groups with no owners" @($groupRows | Where-Object { $_.Risk_NoOwners })
-$summary += Add-ExternalMemberSection "Groups with external members" $groupRows $memberRows
-$summary += Add-RiskSection "Groups with external owners" @($groupRows | Where-Object { $_.Risk_ExternalOwners })
-$summary += Add-RiskSection "Security groups containing external members" @($groupRows | Where-Object { $_.Risk_SecurityWithExternal })
-$summary += Add-RiskSection "Groups joinable by anyone (ANYONE_CAN_JOIN)" @($groupRows | Where-Object { $_.Risk_PublicJoin })
-$summary += Add-RiskSection "Groups postable by anyone or all-in-domain" @($groupRows | Where-Object { $_.Risk_PublicPost })
-$summary += Add-RiskSection "Groups with allowExternalMembers = true" @($groupRows | Where-Object { $_.Risk_ExternalsAllowed })
-$summary += Add-RiskSection "Groups containing nested groups" @($groupRows | Where-Object { $_.Risk_HasNestedGroups })
+$summary += "Membership Counts"
+$summary += "-----------------"
+$summary += "Total membership rows:             $($memberRows.Count)"
+$summary += "  Internal:                        $(@($memberRows | Where-Object { $_.Internal }).Count)"
+$summary += "  External:                        $(@($memberRows | Where-Object { $_.External }).Count)"
+$summary += "  Owners:                          $(@($memberRows | Where-Object { $_.Role -eq 'OWNER' }).Count)"
+$summary += "  Managers:                        $(@($memberRows | Where-Object { $_.Role -eq 'MANAGER' }).Count)"
+$summary += "  Members:                         $(@($memberRows | Where-Object { $_.Role -eq 'MEMBER' }).Count)"
+$summary += "  User accounts:                   $(@($memberRows | Where-Object { $_.MemberType -eq 'USER' }).Count)"
+$summary += "  Group accounts (nested):         $(@($memberRows | Where-Object { $_.MemberType -eq 'GROUP' }).Count)"
+$summary += "  Service accounts:                $(@($memberRows | Where-Object { $_.MemberType -eq 'SERVICE_ACCOUNT' }).Count)"
+$summary += ""
+$summary += "Risk Flag Tallies"
+$summary += "-----------------"
+$summary += ("Groups with no owners:             {0}" -f @($groupRows | Where-Object { $_.Risk_NoOwners }).Count)
+$summary += ("Groups with external members:      {0}" -f @($groupRows | Where-Object { $_.Risk_HasExternalMembers }).Count)
+$summary += ("Groups with external owners:       {0}" -f @($groupRows | Where-Object { $_.Risk_ExternalOwners }).Count)
+$summary += ("Security groups with externals:    {0}" -f @($groupRows | Where-Object { $_.Risk_SecurityWithExternal }).Count)
+$summary += ("Groups joinable by anyone:         {0}" -f @($groupRows | Where-Object { $_.Risk_PublicJoin }).Count)
+$summary += ("Groups postable by anyone/domain:  {0}" -f @($groupRows | Where-Object { $_.Risk_PublicPost }).Count)
+$summary += ("Groups allowing external members:  {0}" -f @($groupRows | Where-Object { $_.Risk_ExternalsAllowed }).Count)
+$summary += ("Groups containing nested groups:   {0}" -f @($groupRows | Where-Object { $_.Risk_HasNestedGroups }).Count)
+$summary += ""
+$summary += "For specific group names, member addresses, and risk drill-downs, see"
+$summary += "GroupTree.txt (visual) and Groups.csv / GroupMembers.csv (filterable)."
 
 $summary | Out-File -FilePath $summaryTxt -Encoding UTF8
 Write-Host "  Wrote Summary.txt" -ForegroundColor Green
+
+# -- Build GroupTree.txt -----------------------------------------------------
+# A visual companion to GroupMembers.csv: every group rendered as a heading
+# with its members listed beneath, annotated with role, internal/external,
+# and (when nested expansion is on) the path through which the user is
+# included. This is the easiest format for a human reviewer to scan.
+$tree = @()
+$tree += "Google Workspace Groups - Tree View"
+$tree += "Generated:   $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+$tree += "Domain(s):   $($InternalDomains -join ', ')"
+$tree += "Workspace:   $(Split-Path $ConfigDir -Leaf)"
+$tree += ""
+$tree += "Legend:"
+$tree += "  [S] = Security group   [E] = Email/distribution group   [B] = Both   [?] = Unknown"
+$tree += "  *   = External member  (nested via X) = inherited through nested group X"
+$tree += "  Roles: OWNER / MANAGER / MEMBER"
+$tree += ""
+$tree += ("=" * 78)
+$tree += ""
+
+$typeLetter = @{ 'Security' = 'S'; 'Email' = 'E'; 'Both' = 'B'; 'Unknown' = '?' }
+
+foreach ($g in ($groupRows | Sort-Object Name)) {
+    $tag      = $typeLetter[$g.Type]
+    $hdrLine  = "[$tag] $($g.Name) <$($g.Email)>"
+    $tree    += $hdrLine
+    $tree    += ('-' * [Math]::Min($hdrLine.Length, 78))
+    if ($g.Description) { $tree += "    $($g.Description)" }
+
+    $flags = @()
+    if ($g.Risk_NoOwners)             { $flags += 'NO OWNERS' }
+    if ($g.Risk_PublicJoin)           { $flags += 'PUBLIC JOIN' }
+    if ($g.Risk_PublicPost)           { $flags += 'PUBLIC POST' }
+    if ($g.Risk_ExternalsAllowed)     { $flags += 'EXTERNALS ALLOWED' }
+    if ($g.Risk_SecurityWithExternal) { $flags += 'SECURITY+EXT' }
+    if ($flags.Count -gt 0) { $tree += "    !! $($flags -join ' | ')" }
+
+    $thisGroupMembers = @($memberRows | Where-Object { $_.GroupEmail -eq $g.Email })
+    if ($thisGroupMembers.Count -eq 0) {
+        $tree += "    (no members)"
+    } else {
+        # OWNER first, then MANAGER, then MEMBER; alphabetical within each role.
+        $sorted = $thisGroupMembers | Sort-Object @{Expression={
+            switch ($_.Role) { 'OWNER' { 0 } 'MANAGER' { 1 } 'MEMBER' { 2 } default { 3 } }
+        }}, MemberEmail
+        foreach ($m in $sorted) {
+            $marker     = if ($m.External) { '*' } else { ' ' }
+            $nameLabel  = if ($m.MemberName -and $m.MemberName -ne $m.MemberEmail) { " ($($m.MemberName))" } else { '' }
+            $nestedLbl  = if ($m.NestedVia) { "  (nested via $($m.NestedVia))" } else { '' }
+            $statusLbl  = if ($m.Status -and $m.Status -ne 'ACTIVE') { "  [$($m.Status)]" } else { '' }
+            $tree += ("  {0} {1,-7}  {2}{3}{4}{5}" -f $marker, $m.Role, $m.MemberEmail, $nameLabel, $nestedLbl, $statusLbl)
+        }
+    }
+    $tree += ""
+}
+
+$tree | Out-File -FilePath $groupTreeTxt -Encoding UTF8
+Write-Host "  Wrote GroupTree.txt" -ForegroundColor Green
 
 # -- Cleanup intermediate files ----------------------------------------------
 foreach ($tmp in @($rawGroupsCsv, $rawCiCsv, $rawSetCsv, $rawMembersCsv)) {
@@ -590,9 +619,10 @@ if ($runStatus -eq 'Success') {
 }
 Write-Host ""
 Write-Host "Output files:" -ForegroundColor White
-if (Test-Path $membersCsv) { Write-Host "  GroupMembers.csv  - Primary export: Group Name, Group Email, Group Type, Member Name, Member Email, Role, Internal/External, NestedVia" -ForegroundColor Green }
-if (Test-Path $groupsCsv)  { Write-Host "  Groups.csv        - One row per group: type, owner/manager emails, member counts, access settings, risk flags" -ForegroundColor Green }
-if (Test-Path $summaryTxt) { Write-Host "  Summary.txt       - Risk highlights with specific member addresses, plus tenant-wide totals" -ForegroundColor Green }
+if (Test-Path $membersCsv)   { Write-Host "  GroupMembers.csv  - Primary CSV: Group Name, Group Email, Group Type, Member Name, Member Email, Role, Internal/External, NestedVia" -ForegroundColor Green }
+if (Test-Path $groupsCsv)    { Write-Host "  Groups.csv        - One row per group: type, owner/manager emails, member counts, access settings, risk flags" -ForegroundColor Green }
+if (Test-Path $groupTreeTxt) { Write-Host "  GroupTree.txt     - Visual tree: every group with members listed beneath, role-sorted, externals marked with *" -ForegroundColor Green }
+if (Test-Path $summaryTxt)   { Write-Host "  Summary.txt       - Tenant-wide statistics only (group type counts, membership totals, risk flag tallies)" -ForegroundColor Green }
 Write-Host ""
 
 $auditTimer.Stop()
