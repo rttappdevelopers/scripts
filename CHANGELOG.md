@@ -6,6 +6,12 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ## 2026-04-24
 
+### Google - Audit Google Groups (fixes and tree view)
+- **Fixed Cloud Identity label parsing.** GAM emits one boolean column per label (`labels.cloudidentity.googleapis.com/groups.security`, `labels.cloudidentity.googleapis.com/groups.discussion_forum`) holding `True` when applied, not a single serialized `labels` column. The previous regex match returned `Unknown` for every group; now `Type` (`Security` / `Email` / `Both` / `Unknown`) is correctly assigned across the tenant
+- **Pared `Summary.txt` down to statistics only.** Sections now cover group type counts, membership totals broken out by role and member type, and risk flag tallies. Per-group risk drill-downs and external-member listings moved into the new `GroupTree.txt`
+- **Added `GroupTree.txt`.** A visual companion to `GroupMembers.csv`: every group rendered as a heading (`[S]` / `[E]` / `[B]` / `[?]` type tag, name, email, description), risk flags rendered inline (`!! NO OWNERS | PUBLIC POST`), then every member listed beneath sorted OWNER -> MANAGER -> MEMBER. External members marked with `*`, nested members annotated with `(nested via parent-group@domain)`. Mirrors the `FolderTree.txt` pattern from the Drive audit script
+- Updated `Google/README.md` script index and CHANGELOG to reflect the four-output structure (`GroupMembers.csv`, `Groups.csv`, `GroupTree.txt`, `Summary.txt`)
+
 ### Google - Audit Google Groups (update)
 - Reworked output focus from counts to specific names and addresses, per vCIO request for "Group Name, email and Members"
 - `GroupMembers.csv` is now the primary export: columns are `GroupName`, `GroupEmail`, `GroupType`, `MemberName` (display name), `MemberEmail`, `Role`, `MemberType`, `Status`, `Internal`, `External`, `NestedVia`
