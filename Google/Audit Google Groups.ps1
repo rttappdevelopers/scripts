@@ -57,9 +57,11 @@
     When provided, skips the workspace selection prompt and uses this directory directly.
 
 .PARAMETER ExpandNestedGroups
-    When specified, member listings recursively expand nested group memberships
-    so a user who is only a member via a parent group still appears in
-    GroupMembers.csv. Increases runtime on large tenants. Default off.
+    When $true (the default), member listings recursively expand nested group
+    memberships so a user who is only a member via a parent group still appears
+    in GroupMembers.csv with NestedVia populated. Pass -ExpandNestedGroups $false
+    to list only direct members. Increases runtime slightly on very large tenants
+    but is almost always what you want for a complete audit.
 
 .PARAMETER SkipSettings
     Skip the Groups Settings API call. Speeds up the audit on large tenants
@@ -88,7 +90,7 @@ param(
     [string]$OutputDir,
     [string]$ConfigBaseDir = "C:\GAMConfig",
     [string]$ConfigDir     = "",
-    [switch]$ExpandNestedGroups,
+    [bool]$ExpandNestedGroups = $true,
     [switch]$SkipSettings
 )
 
