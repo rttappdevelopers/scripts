@@ -6,6 +6,10 @@ _Customer/
 # Audit report — contains identifying information
 audit.md
 
+# GAM audit output folders — contain PII (file names, user emails, group members, etc.)
+DriveAudit_*/
+GroupAudit_*/
+
 # Windows
 desktop.ini
 Thumbs.db
