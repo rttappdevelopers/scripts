@@ -279,7 +279,7 @@ See [Audit Shared Drive Folder - Guide.md](Audit%20Shared%20Drive%20Folder%20-%2
 
 ### Audit Google Groups.ps1
 
-[`Audit Google Groups.ps1`](Audit%20Google%20Groups.ps1) - Inventories every Google Group in a tenant for security review. Classifies each group as Security, Email (distribution), or Both via Cloud Identity labels; captures owner and manager email addresses, internal vs external member counts, and access settings (`whoCanJoin`, `whoCanPostMessage`, `allowExternalMembers`, etc.); and emits risk flags for owner-less groups, external members, externally-owned groups, public-join, public-post, security groups containing external members, and nested-group references. Outputs `GroupMembers.csv` (primary export with Group Name, Group Email, Group Type, Member Name, Member Email, Role, and NestedVia), `Groups.csv`, and a human-readable `Summary.txt`.
+[`Audit Google Groups.ps1`](Audit%20Google%20Groups.ps1) - Inventories every Google Group in a tenant for security review. Classifies each group as Security, Email (distribution), or Both via Cloud Identity labels; captures owner and manager email addresses, internal vs external member counts, and access settings (`whoCanJoin`, `whoCanPostMessage`, `allowExternalMembers`, etc.); and emits risk flags for owner-less groups, external members, externally-owned groups, public-join, public-post, security groups containing external members, and nested-group references. Outputs `GroupMembers.csv` (primary CSV with Group Name, Group Email, Group Type, Member Name, Member Email, Role, NestedVia), `Groups.csv`, `GroupTree.txt` (visual tree of every group with members listed beneath, role-sorted, externals marked), and `Summary.txt` (tenant-wide statistics).
 
 ---
 
