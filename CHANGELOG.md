@@ -4,6 +4,35 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-04-24
+
+### Google - Audit Google Groups (update)
+- Reworked output focus from counts to specific names and addresses, per vCIO request for "Group Name, email and Members"
+- `GroupMembers.csv` is now the primary export: columns are `GroupName`, `GroupEmail`, `GroupType`, `MemberName` (display name), `MemberEmail`, `Role`, `MemberType`, `Status`, `Internal`, `External`, `NestedVia`
+  - `MemberName` populated by adding `name` to the `gam print group-members fields` list
+  - `NestedVia` populated from GAM's `subGroupEmail` column when `-ExpandNestedGroups` is used, identifying the direct-member group through which a transitively included user comes
+  - `GroupName` and `GroupType` denormalized onto every row so the CSV stands alone without requiring a join to `Groups.csv`
+- `Groups.csv` now includes `OwnerEmails`, `ManagerEmails`, and `ExternalMemberEmails` columns with semicolon-delimited address lists alongside the existing count columns
+- `Summary.txt` external-members section now drills down to list specific external member emails under each affected group (with display name, role, and NestedVia when applicable), not just group names
+- Added `Add-ExternalMemberSection` helper that produces the detailed per-group/per-member breakdown in `Summary.txt`
+- Updated `Add-RiskSection` to display group display name + email rather than just the email address
+- Added `Google/README.md` Future Enhancements section documenting six ideas for later: external-domain frequency table, permission impact for security groups, diff/change detection, nesting depth report, mail-flow risk overlay, owner-less stale group cleanup
+
+### Google - Audit Google Groups (new)
+- Added `Audit Google Groups.ps1` for tenant-wide Google Workspace group security audits
+- Reuses the workspace-selection, transcript logging, internal-domain-list, and `Invoke-GamStream` heartbeat patterns from `Audit Shared Drive Folder.ps1`
+- Inventories every group in three GAM calls:
+  - `gam print groups` for email, name, description, member counts
+  - `gam print cigroups labels` to classify each group as **Security**, **Email** (discussion forum / distribution), or **Both** based on Cloud Identity labels (`cloudidentity.googleapis.com/groups.security` and `cloudidentity.googleapis.com/groups.discussion_forum`)
+  - `gam print groups settings` for access-control fields (`whoCanJoin`, `whoCanPostMessage`, `whoCanViewMembership`, `allowExternalMembers`, `archiveOnly`, `messageModerationLevel`); skippable via `-SkipSettings`
+  - `gam print group-members` (optionally `recursive` via `-ExpandNestedGroups`) for membership rows
+- Computes per-group internal vs external member counts using the configured comma-separated internal domain list (alias domains supported)
+- Emits eight risk flag columns: `Risk_NoOwners`, `Risk_HasExternalMembers`, `Risk_ExternalOwners`, `Risk_PublicJoin`, `Risk_PublicPost`, `Risk_ExternalsAllowed`, `Risk_SecurityWithExternal`, `Risk_HasNestedGroups`
+- Outputs three files: `Groups.csv` (one row per group), `GroupMembers.csv` (one row per (group, member) with internal/external classification), and `Summary.txt` (human-readable risk highlights with up to 50 examples per category)
+- Updated `Google/README.md` script index
+
+---
+
 ## 2026-04-18
 
 ### Google - Audit Shared Drive Folder
