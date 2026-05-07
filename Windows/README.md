@@ -627,6 +627,7 @@ $apps = @(
 foreach ($app in $apps) {
     $extra = if ($app -eq "Microsoft.Teams") { "--override '/quiet NOLAUNCH=1'" } else { "" }
     winget install --id $app --source winget --silent --accept-package-agreements --accept-source-agreements $extra
+    while (Get-Process msiexec -ErrorAction SilentlyContinue) { Start-Sleep -Seconds 3 }
 }
 ```
 
@@ -635,12 +636,12 @@ foreach ($app in $apps) {
 > Remove `--silent` to see the installer UI and monitor progress.
 
 ```powershell
-"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --source winget --silent --accept-package-agreements --accept-source-agreements }
+"Google.Chrome","Mozilla.Firefox","Zoom.Zoom","SlackTechnologies.Slack","Dialpad.Dialpad","Microsoft.Teams","7zip.7zip","Microsoft.DotNet.DesktopRuntime.8","Microsoft.VCRedist.2015+.x64" | ForEach-Object { winget install --id $_ --source winget --silent --accept-package-agreements --accept-source-agreements; while (Get-Process msiexec -ErrorAction SilentlyContinue) { Start-Sleep -Seconds 3 } }
 ```
 
 **Engineer / sysadmin add-ons** (VS Code, Notepad++, Python 3)
 ```powershell
-"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --source winget --silent --accept-package-agreements --accept-source-agreements }
+"Microsoft.VisualStudioCode","Notepad++.Notepad++","Python.Python.3.13" | ForEach-Object { winget install --id $_ --source winget --silent --accept-package-agreements --accept-source-agreements; while (Get-Process msiexec -ErrorAction SilentlyContinue) { Start-Sleep -Seconds 3 } }
 ```
 
 **Other useful winget commands**
