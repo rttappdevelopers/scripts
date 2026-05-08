@@ -70,9 +70,12 @@ foreach ($serviceName in $Name) {
         # Refresh to get current StartType and Status
         $svc = Get-Service -Name $svc.Name
 
-        # Enable if disabled
+        # Set to Automatic if Disabled or Manual
         if ($svc.StartType -eq [System.ServiceProcess.ServiceStartMode]::Disabled) {
-            Write-Host "[INFO] '$($svc.Name)' is Disabled - setting startup type to Automatic."
+            Write-Host "[INFO] '$($svc.Name)' startup type is Disabled - setting to Automatic."
+            Set-Service -Name $svc.Name -StartupType Automatic
+        } elseif ($svc.StartType -eq [System.ServiceProcess.ServiceStartMode]::Manual) {
+            Write-Host "[INFO] '$($svc.Name)' startup type is Manual - setting to Automatic."
             Set-Service -Name $svc.Name -StartupType Automatic
         }
 
