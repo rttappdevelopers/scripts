@@ -96,6 +96,7 @@ Scripts are organized into subfolders by function. For guidance on downloading a
 | [Cleanup Windows Patches.ps1](OS/Maintenance/Cleanup%20Windows%20Patches.ps1) | Removes superseded Windows update packages |
 | [Cleanup Windows Update Cache.ps1](OS/Maintenance/Cleanup%20Windows%20Update%20Cache.ps1) | Clears the Windows Update download cache (SoftwareDistribution folder) |
 | [Disable Windows Welcome Experience.bat](OS/Maintenance/Disable%20Windows%20Welcome%20Experience.bat) | Suppresses the Windows Welcome Experience screen shown after updates |
+| [Enable and Start Service.ps1](OS/Maintenance/Enable%20and%20Start%20Service.ps1) | Enables (if disabled) and starts (or restarts) one or more Windows services; retries on failure |
 | [Install Hotfix PrintNightmare.bat](OS/Maintenance/Install%20Hotfix%20PrintNightmare.bat) | Applies the PrintNightmare security hotfix |
 | [Install Windows Product Key.bat](OS/Maintenance/Install%20Windows%20Product%20Key.bat) | Activates Windows with a provided product key |
 | [Rebuild Windows Search Index.ps1](OS/Maintenance/Rebuild%20Windows%20Search%20Index.ps1) | Rebuilds the Windows Search index from scratch |

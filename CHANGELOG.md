@@ -4,6 +4,18 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-05-08
+
+### Windows - Enable and Start Service (new)
+- Added `Enable and Start Service.ps1` to `Windows/OS/Maintenance/`
+- For each named service: sets startup type to Automatic if Disabled, starts if stopped, restarts if already Running
+- Accepts `Name` (comma-separated or array), `Attempts`, and `WaitTimeInSecs` parameters with matching NinjaRMM env var overrides
+- Retry loop polls the service status after each start attempt and re-tries `Start-Service` up to the configured attempt count before reporting failure
+- Supports both service `Name` and `DisplayName` for lookup
+- Updated `Windows/README.md` script index
+
+---
+
 ## 2026-04-24
 
 ### Google - Audit Google Groups (fixes and tree view)
