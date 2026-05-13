@@ -40,7 +40,8 @@
       Malwarebytes, ESET, Webroot SecureAnywhere,
       Norton / Symantec Endpoint Protection, McAfee / Trellix,
       Trend Micro, Avast, AVG, Kaspersky,
-      Carbon Black, Cylance, Cortex XDR, WithSecure (F-Secure)
+      Carbon Black, Cylance, Cortex XDR, WithSecure (F-Secure),
+      Avira, Comodo Internet Security, Panda Dome, Emsisoft, 360 Total Security
 
     Environment Variables (NinjaOne / RMM):
       NINJA_FIELD_NAME - (optional) Custom field name to write the result into.
@@ -136,6 +137,11 @@ $avServiceMap = @(
     [PSCustomObject]@{ Name = 'Cylance';                               Services = @('CylanceSvc') }
     [PSCustomObject]@{ Name = 'Cortex XDR';                            Services = @('CyveraService', 'Traps Management Service') }
     [PSCustomObject]@{ Name = 'WithSecure (F-Secure)';                 Services = @('FSMA', 'fsorsp') }
+    [PSCustomObject]@{ Name = 'Avira';                                 Services = @('AntivirService', 'Avira.ServiceHost') }
+    [PSCustomObject]@{ Name = 'Comodo Internet Security';              Services = @('cmdagent', 'CmdVirth') }
+    [PSCustomObject]@{ Name = 'Panda Dome';                            Services = @('PSANToManager', 'NanoServiceMain') }
+    [PSCustomObject]@{ Name = 'Emsisoft';                              Services = @('a2service') }
+    [PSCustomObject]@{ Name = '360 Total Security';                    Services = @('ZhuDongFangYu') }
 )
 
 # ==============================================================================
