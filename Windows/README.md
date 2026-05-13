@@ -148,6 +148,7 @@ Scripts are organized into subfolders by function. For guidance on downloading a
 | Script | Description |
 |---|---|
 | [Audit Local Admin Users.ps1](OS/Security/Audit%20Local%20Admin%20Users.ps1) | Reports all members of the local Administrators group |
+| [Detect Antivirus.ps1](OS/Security/Detect%20Antivirus.ps1) | Detects installed/active third-party AV or EDR products and falls back to Windows Defender status on workstations and servers; reports to NinjaOne `installedAntivirus` field |
 | [Disable Cached Domain Credentials.bat](OS/Security/Disable%20Cached%20Domain%20Credentials.bat) | Sets the registry value to disable cached domain credential storage |
 | [Disable SMB Guest Logon.ps1](OS/Security/Disable%20SMB%20Guest%20Logon.ps1) | Disables SMB guest access on the machine |
 | [Enable BitLocker.ps1](OS/Security/Enable%20BitLocker.ps1) | Enables BitLocker encryption on the system drive and stores the recovery key |

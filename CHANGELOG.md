@@ -6,6 +6,14 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ## 2026-05-13
 
+### Windows - Detect Antivirus (new)
+- Added `Detect Antivirus.ps1` to `Windows/OS/Security/`
+- Tier 1: queries `root\SecurityCenter2` WMI (Windows Security Center) on workstations; decodes the packed `productState` field to determine active vs. inactive registration; skips built-in Windows Defender entries
+- Tier 2: service-based detection for 19 known AV/EDR products using `Get-Service`; runs on Windows Server (no WSC) and as a fallback on workstations when WSC returns no active products
+- Tier 3: Windows Defender fallback via `Get-MpComputerStatus` (available on both client and server); reports real-time protection state, `AMRunningMode` (Normal/Passive/EDR Block Mode), and signature version/date; detects Passive mode as a signal that an unrecognised primary AV is present
+- Writes the result to a NinjaOne custom device field (default `installedAntivirus`) via `Set-NinjaProperty`; field name overridable via `NINJA_FIELD_NAME` env var
+- Updated `Windows/README.md` script index
+
 ### Mac - Detect Antivirus (new)
 - Added `Detect Antivirus.sh` to `Mac/Security/`
 - Scans for known third-party AV/EDR products (BitDefender, Sophos, CrowdStrike, SentinelOne, Microsoft Defender, Malwarebytes, ESET, Webroot, Norton/Symantec, McAfee, Trend Micro, Avast, AVG, Kaspersky, Huntress, Cortex XDR, Carbon Black, Cylance, Trellix, WithSecure) by combining application bundle / library path checks with a single `ps` snapshot to confirm the main daemon is running
