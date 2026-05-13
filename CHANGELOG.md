@@ -6,6 +6,9 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ## 2026-05-13
 
+### Mac - Detect Antivirus (update - 524c7de)
+- Added Avira detection (`/Applications/Avira Security.app`, `/Applications/Avira Antivirus Pro.app`, `/Library/Application Support/Avira`; processes: `Avira.ServiceHost`, `avira_daemon`, `AviraDaemon`)
+
 ### Windows - Detect Antivirus (update - dc3e918)
 - Added five products to the service-based detection tier: Avira (`AntivirService`, `Avira.ServiceHost`), Comodo Internet Security (`cmdagent`, `CmdVirth`), Panda Dome (`PSANToManager`, `NanoServiceMain`), Emsisoft (`a2service`), 360 Total Security (`ZhuDongFangYu`)
 - Updated `.NOTES` block to list the new products
