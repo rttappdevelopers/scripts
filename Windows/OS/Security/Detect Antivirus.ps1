@@ -141,8 +141,8 @@ $avServiceMap = @(
 # Main
 # ==============================================================================
 try {
-    $activeProducts  = [System.Collections.Generic.List[string]]::new()
-    $installedProducts = [System.Collections.Generic.List[string]]::new()
+    $activeProducts    = New-Object 'System.Collections.Generic.List[string]'
+    $installedProducts = New-Object 'System.Collections.Generic.List[string]'
     $wscUsed = $false
 
     # --------------------------------------------------------------------------
@@ -259,6 +259,9 @@ try {
 
 } catch {
     Write-Log "Unhandled error: $($_.Exception.Message)" 'Error'
+    if ($NinjaFieldName) {
+        try { Set-NinjaProperty -Name $NinjaFieldName -Value 'Failed audit' } catch {}
+    }
     exit 1
 }
 

@@ -62,6 +62,9 @@ fi
 NINJA_FIELD_NAME="${NINJA_FIELD_NAME:-installedAntivirus}"
 NINJA_CLI="/Applications/NinjaRMMAgent/programdata/ninjarmm-cli"
 
+# Trap unexpected failures and write "Failed audit" to the Ninja field
+trap 'log_error "Script failed unexpectedly."; [[ -f "${NINJA_CLI}" ]] && "${NINJA_CLI}" set "${NINJA_FIELD_NAME}" "Failed audit" 2>/dev/null; exit 1' ERR
+
 # ------------------------------------------------------------------------------
 # Snapshot of running processes - one ps call, reused for every product
 # ------------------------------------------------------------------------------
