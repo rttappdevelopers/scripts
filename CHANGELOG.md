@@ -6,6 +6,11 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ## 2026-05-13
 
+### Windows - Detect Antivirus (fix - 14b3fe5)
+- Fixed script producing no output (FAILURE) on Windows Server 2019 Standard
+- Root cause: `Write-Log` used `Write-Error` for Error-level messages; with `$ErrorActionPreference = 'Stop'` set globally, calling `Write-Error` inside the outer `catch` block threw a second terminating exception that escaped unhandled, killing the script with zero output
+- Fix: replaced `Write-Error` with `[Console]::Error.WriteLine` - writes to stderr without triggering PowerShell's error-action machinery
+
 ### Windows - Detect Antivirus (new)
 - Added `Detect Antivirus.ps1` to `Windows/OS/Security/`
 - Tier 1: queries `root\SecurityCenter2` WMI (Windows Security Center) on workstations; decodes the packed `productState` field to determine active vs. inactive registration; skips built-in Windows Defender entries
