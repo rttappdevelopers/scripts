@@ -6,6 +6,10 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ## 2026-05-13
 
+### Windows - Detect Antivirus (update - dc3e918)
+- Added five products to the service-based detection tier: Avira (`AntivirService`, `Avira.ServiceHost`), Comodo Internet Security (`cmdagent`, `CmdVirth`), Panda Dome (`PSANToManager`, `NanoServiceMain`), Emsisoft (`a2service`), 360 Total Security (`ZhuDongFangYu`)
+- Updated `.NOTES` block to list the new products
+
 ### Windows - Detect Antivirus (fix - 14b3fe5)
 - Fixed script producing no output (FAILURE) on Windows Server 2019 Standard
 - Root cause: `Write-Log` used `Write-Error` for Error-level messages; with `$ErrorActionPreference = 'Stop'` set globally, calling `Write-Error` inside the outer `catch` block threw a second terminating exception that escaped unhandled, killing the script with zero output
