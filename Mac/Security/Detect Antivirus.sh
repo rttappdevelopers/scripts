@@ -30,7 +30,7 @@
 #     Norton / Symantec Endpoint Protection, McAfee Endpoint Security,
 #     Trend Micro, Avast, AVG, Kaspersky,
 #     Cortex XDR (Palo Alto), VMware Carbon Black,
-#     Cylance, Trellix, F-Secure / WithSecure
+#     Cylance, Trellix, F-Secure / WithSecure, Avira
 #
 #   Environment Variables (NinjaOne / RMM):
 #     NINJA_FIELD_NAME  - (optional) Ninja custom field name to write the
@@ -243,6 +243,11 @@ check_product "Trellix Endpoint Security" \
 check_product "WithSecure (F-Secure)" \
     "/Applications/F-Secure|/Applications/WithSecure|/Library/Application Support/F-Secure" \
     "fshoster|F-Secure|WithSecure"
+
+# Avira Security for Mac
+check_product "Avira" \
+    "/Applications/Avira Security.app|/Applications/Avira Antivirus Pro.app|/Library/Application Support/Avira" \
+    "Avira.ServiceHost|avira_daemon|AviraDaemon"
 
 # ==============================================================================
 # Build result string
