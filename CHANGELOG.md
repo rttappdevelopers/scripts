@@ -4,6 +4,19 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-05-13
+
+### Mac - Detect Antivirus (new)
+- Added `Detect Antivirus.sh` to `Mac/Security/`
+- Scans for known third-party AV/EDR products (BitDefender, Sophos, CrowdStrike, SentinelOne, Microsoft Defender, Malwarebytes, ESET, Webroot, Norton/Symantec, McAfee, Trend Micro, Avast, AVG, Kaspersky, Huntress, Cortex XDR, Carbon Black, Cylance, Trellix, WithSecure) by combining application bundle / library path checks with a single `ps` snapshot to confirm the main daemon is running
+- A product is flagged "Active" only when both install footprint and process are present; install-only matches are recorded but not reported as the active AV
+- Falls back to Apple XProtect when no third-party AV is active, reporting XProtect data version and last-update date from `XProtect.meta.plist`, plus presence of XProtect Remediator
+- Writes the result to a NinjaOne custom device field (default `installedAntivirus`, overridable via `NINJA_FIELD_NAME` env var) using `/Applications/NinjaRMMAgent/programdata/ninjarmm-cli`
+- Requires root; logs a structured summary to stdout for Ninja activity capture
+- Updated `Mac/README.md` script index
+
+---
+
 ## 2026-05-08
 
 ### Windows - Enable and Start Service (new)
