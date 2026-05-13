@@ -76,7 +76,7 @@ function Write-Log {
         'Error'   { '[ERROR]  ' }
     }
     if ($Level -eq 'Error') {
-        Write-Error "$prefix $Message"
+        [Console]::Error.WriteLine("$prefix $Message")
     } else {
         Write-Host "$prefix $Message"
     }
