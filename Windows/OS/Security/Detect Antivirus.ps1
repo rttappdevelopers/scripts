@@ -16,10 +16,11 @@
                check on workstations when WSC returns no active products.
 
       Tier 3 - Windows Defender / Microsoft Defender Antivirus fallback.
-               If no third-party AV is found active, reports Defender status
-               including real-time protection state, running mode, and
-               signature version/date via Get-MpComputerStatus. Works on
-               both client and server editions.
+               If no third-party AV is found active, checks for the presence
+               of the WinDefend service before querying Get-MpComputerStatus.
+               Reports "None detected" on systems where Defender is not
+               installed (e.g. Server 2012 R2 without MDE agent). Works on
+               both client and server editions where Defender is present.
 
     The result string is written to a NinjaOne custom device field and printed
     to stdout for NinjaOne activity log capture.
@@ -204,25 +205,36 @@ try {
     } else {
         Write-Log 'No active third-party antivirus detected. Checking Windows Defender...'
 
-        try {
-            $mpStatus = Get-MpComputerStatus -ErrorAction Stop
+        # Check whether Windows Defender is installed at all before querying it.
+        # On Server 2012 R2 (and earlier), Defender is not present unless the
+        # Microsoft Defender for Endpoint agent has been deployed separately.
+        # The WinDefend service is the reliable presence indicator.
+        $defenderInstalled = $null -ne (Get-Service -Name 'WinDefend' -ErrorAction SilentlyContinue)
 
-            $sigVersion = $mpStatus.AntivirusSignatureVersion
-            $sigDate    = $mpStatus.AntivirusSignatureLastUpdated.ToString('yyyy-MM-dd')
-            $runMode    = $mpStatus.AMRunningMode
+        if (-not $defenderInstalled) {
+            $result = 'None detected'
+            Write-Log 'Windows Defender service (WinDefend) not found - no AV product detected.' 'Warn'
+        } else {
+            try {
+                $mpStatus = Get-MpComputerStatus -ErrorAction Stop
 
-            if (-not $mpStatus.AntivirusEnabled) {
-                $result = 'Windows Defender (Disabled)'
-            } elseif ($runMode -in @('Passive', 'SxS Passive Mode')) {
-                # Passive mode means another AV is primary but was not identified
-                $result = "Windows Defender (Passive - primary AV not identified, Sigs: v$sigVersion, updated $sigDate)"
-            } else {
-                $rtpState = if ($mpStatus.RealTimeProtectionEnabled) { 'Enabled' } else { 'Disabled' }
-                $result   = "Windows Defender (Real-time: $rtpState, Mode: $runMode, Sigs: v$sigVersion, updated $sigDate)"
+                $sigVersion = $mpStatus.AntivirusSignatureVersion
+                $sigDate    = $mpStatus.AntivirusSignatureLastUpdated.ToString('yyyy-MM-dd')
+                $runMode    = $mpStatus.AMRunningMode
+
+                if (-not $mpStatus.AntivirusEnabled) {
+                    $result = 'Windows Defender (Disabled)'
+                } elseif ($runMode -in @('Passive', 'SxS Passive Mode')) {
+                    # Passive mode means another AV is primary but was not identified
+                    $result = "Windows Defender (Passive - primary AV not identified, Sigs: v$sigVersion, updated $sigDate)"
+                } else {
+                    $rtpState = if ($mpStatus.RealTimeProtectionEnabled) { 'Enabled' } else { 'Disabled' }
+                    $result   = "Windows Defender (Real-time: $rtpState, Mode: $runMode, Sigs: v$sigVersion, updated $sigDate)"
+                }
+            } catch {
+                $result = 'Windows Defender (status unknown)'
+                Write-Log "Could not query Windows Defender status: $($_.Exception.Message)" 'Warn'
             }
-        } catch {
-            $result = 'Windows Defender (status unknown)'
-            Write-Log "Could not query Windows Defender status: $($_.Exception.Message)" 'Warn'
         }
     }
 
