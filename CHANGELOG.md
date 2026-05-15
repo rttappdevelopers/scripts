@@ -4,6 +4,18 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-05-15
+
+### Windows - Install WireGuard (new)
+- Added `Install WireGuard.ps1` to `Windows/Applications/`
+- Installs WireGuard via winget (`WireGuard.WireGuard --scope machine`); falls back to downloading the latest architecture-appropriate MSI from https://download.wireguard.com/windows-client/ (parsed from the directory listing), with a secondary fallback to `wireguard-installer.exe`
+- Sets `HKLM\Software\WireGuard\LimitedOperatorUI = 1` so members of "Network Configuration Operators" can manage tunnels without local admin rights
+- Adds the built-in **Users** group itself (not its members) to "Network Configuration Operators" so all present and future users on the machine can manage WireGuard tunnels
+- Optionally reads a WireGuard tunnel config from the `wireguardConfig` Ninja organization custom field (multi-line text, inherited at the device level), writes it to `C:\ProgramData\WireGuard\wg0.conf` with ACLs restricted to SYSTEM and Administrators, and registers it as a managed tunnel service via `wireguard /installtunnel`
+- Updated `Windows/README.md` script index
+
+---
+
 ## 2026-05-13
 
 ### Mac - Detect Antivirus (update - 524c7de)

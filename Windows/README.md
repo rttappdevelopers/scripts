@@ -52,6 +52,7 @@ Scripts are organized into subfolders by function. For guidance on downloading a
 | [Install NordLayer VPN.ps1](Applications/Install%20NordLayer%20VPN.ps1) | Installs the NordLayer business VPN client |
 | [Install PowerShell.bat](Applications/Install%20PowerShell.bat) | Installs PowerShell 7 via winget |
 | [Install Splashtop SOS.ps1](Applications/Install%20Splashtop%20SOS.ps1) | Installs Splashtop SOS remote support client |
+| [Install WireGuard.ps1](Applications/Install%20WireGuard.ps1) | Installs WireGuard VPN client via winget or direct MSI download, enables limited non-admin tunnel management, and optionally deploys a tunnel config from a Ninja custom field |
 | [PreStage JumpCloud Migration.ps1](Applications/PreStage%20JumpCloud%20Migration.ps1) | Prepares a device for JumpCloud migration before agent installation |
 | [Remove Dell OEM Software.ps1](Applications/Remove%20Dell%20OEM%20Software.ps1) | Removes Dell bloatware and OEM preinstalled applications |
 | [Remove HP Bloatware.ps1](Applications/Remove%20HP%20Bloatware.ps1) | Removes HP bloatware and OEM preinstalled applications |
