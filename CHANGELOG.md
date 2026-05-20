@@ -4,6 +4,21 @@ All notable changes to this repository are documented here. Entries are grouped 
 
 ---
 
+## 2026-05-20
+
+### Windows - Configure Auto Logoff (new)
+- Added `Configure Auto Logoff.ps1` to `Windows/OS/Security/`
+- Registers a scheduled task (`RTT - Shared Device Auto Logoff`) using Windows Task Scheduler's built-in `IdleTrigger`; logs off the physical console session via `logoff console` after a configurable idle timeout
+- Reads idle timeout from the `minutesToAutoLogoff` NinjaOne org-level integer custom field via `Get-NinjaProperty`; falls back to the `idleLogoffMinutes` script variable (legacy env var) and then the `-IdleMinutes` parameter default of 10
+- Reads `autoLogoffInactiveUsers` NinjaOne device-level checkbox field; unchecked (`false`) forces task removal; null (never touched) is ignored so the org setting applies
+- Setting `minutesToAutoLogoff` to 0 or passing `-IdleMinutes 0` removes the task
+- Runs as SYSTEM; `cmd.exe` wrapper suppresses errors when no session is present so Task Scheduler does not report failure at the login screen
+- `DisallowStartIfOnBatteries=false` and `StopIfGoingOnBatteries=false` ensure the task fires on laptops running on battery
+- Idempotent: re-running updates the timeout by removing and re-registering the task
+- Updated `Windows/README.md` script index
+
+---
+
 ## 2026-05-15
 
 ### Windows - Install WireGuard (new)
